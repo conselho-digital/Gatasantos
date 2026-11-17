@@ -4,6 +4,7 @@ import { criarCidade, LIMITE } from './game/city';
 import { COLLIDERS, empurrarCirculo } from './game/collision';
 import { consumirMouse, eixoMovimento, iniciarMouse, tecla } from './game/input';
 import { criarPersonagem } from './game/character';
+import { Animador, medirPasso, TIME_SCALE, VEL_JOGO, type Clip } from './game/anim';
 import { atualizarCamera, distanciaMinimaDeCaixas, novoEstadoCamera, posicaoDesejada } from './game/camera';
 
 const params = new URLSearchParams(location.search);
@@ -15,6 +16,14 @@ scene.add(cidade.grupo);
 
 const boneco = criarPersonagem();
 scene.add(boneco.raiz);
+const anim = new Animador(boneco);
+
+const GRAVIDADE = 16;
+const PULO = 5.5;
+let altura = 0;
+let vy = 0;
+let clipForcado: Clip | null = null;
+let pouso = 0; // tempo restante do clipe 'land'
 
 const RAIO = 0.4;
 const SENS = 0.6; // padrão 0,6x
@@ -42,7 +51,17 @@ function atualizar(dt: number) {
   gAntes = g;
 
   const { x, y } = eixoMovimento();
-  const vel = tecla('ShiftLeft') ? 6.2 : 2.1; // andar devagar por padrão
+  const agachado = tecla('KeyC') || tecla('ControlLeft');
+  const correndo = tecla('ShiftLeft') && !agachado;
+  const vel = agachado ? VEL_JOGO.crouch_walk! : correndo ? VEL_JOGO.run! : VEL_JOGO.walk!; // andar devagar por padrão
+  const noChao = altura <= 0 && vy <= 0;
+  if (noChao && tecla('Space') && !agachado) { vy = PULO; }
+  if (vy > 0 || altura > 0) {
+    vy -= GRAVIDADE * dt;
+    altura += vy * dt;
+    if (altura <= 0) { if (vy < -3) pouso = 0.18; altura = 0; vy = 0; }
+  }
+  pouso = Math.max(0, pouso - dt);
   if (x || y) {
     const n = Math.hypot(x, y);
     const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw);
@@ -56,8 +75,17 @@ function atualizar(dt: number) {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     giro += d * (1 - Math.exp(-dt * 14));
   }
-  boneco.raiz.position.set(pos.x, 0, pos.z);
+  boneco.raiz.position.set(pos.x, altura, pos.z);
   boneco.raiz.rotation.y = giro;
+  const mexe = !!(x || y);
+  let clip: Clip;
+  if (altura > 0) clip = vy > 0 ? 'jump' : 'fall';
+  else if (pouso > 0) clip = 'land';
+  else if (mexe) clip = agachado ? 'crouch_walk' : correndo ? 'run' : 'walk';
+  else clip = agachado ? 'crouch_idle' : 'idle';
+  if (clipForcado) clip = clipForcado; // só dev: inspeção
+  anim.tocar(clip);
+  anim.atualizar(dt, vel, altura <= 0);
 
   if (camFixa && camFixa.length >= 6) {
     camera.position.set(camFixa[0], camFixa[1], camFixa[2]);
@@ -101,5 +129,9 @@ if (import.meta.env.DEV) {
       return min;
     },
     posDesejada: posicaoDesejada,
+    anim,
+    forcarClip: (c: Clip | null) => { clipForcado = c; },
+    timeScale: TIME_SCALE,
+    medirPasso: (c: Clip) => medirPasso(criarPersonagem(), c),
   };
 }

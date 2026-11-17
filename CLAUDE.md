@@ -49,3 +49,17 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
   (colado na parede, a 1 m, canto de prédio e canto do muro) — aceite ≥ 0,9 ok. Via `__game.camTeste(x,z)`.
 - Render: 32 chamadas, 1330 triângulos; 0 erros de página.
 - Limites: sem mira/FOV, sem câmera de veículo; boneco ainda sem animação (etapa 4); cabelo/rosto simples.
+
+## Rodada: Etapa 4 — Animação
+- `anim.ts`: clipes por funções (sem arquivos): `idle, walk, run, crouch_idle, crouch_walk, jump, fall, land`.
+  `Animador` com crossfade (0,15 s; 0,08 s no pulo/pouso) e corpo apoiado pelo pé mais baixo.
+  Ainda não grava `public/anims/*.json` (os clipes são avaliados em tempo real); clipes de luta/veículo vêm nas etapas 7–8.
+- Apoio sem patinar: no apoio o ângulo da coxa muda em linha reta (pé parado no chão); balanço é uma curva suave.
+- Velocidades do jogo: andar 2,1, correr 6,2, agachado 1,0 m/s. Pulo: v0 5,5 m/s, gravidade 16 m/s² (~0,95 m).
+- Medido pelo pé de apoio (`__game.medirPasso(clip)`, mediana de 2 ciclos; alvo → medido):
+  andar 2,1 → 2,10 (quartis 1,93–2,25); correr 6,2 → 6,23; agachado 1,0 → 1,00 (0,97–1,04).
+  `TIME_SCALE`: walk 0,974, run 1,176, crouch_walk 0,961 (ao refazer o clipe, medir e recalibrar).
+- Controles: Shift corre, C/Ctrl agacha, Espaço pula. `__game.forcarClip(nome)` fixa um clipe no dev.
+- Conferido em folha de quadros (8 clipes) por captura lateral.
+- Limites: correr tem fase aérea, então os quartis de medida ficam ruidosos (vale a mediana); sem rolar/escalar/cair ainda;
+  pulo só no plano (sem subir em caixas).
