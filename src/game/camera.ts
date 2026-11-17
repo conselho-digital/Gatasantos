@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLLIDERS } from './collision';
+import { COLLIDERS, perto } from './collision';
 
 /** Câmera orbital em 3ª pessoa que não atravessa prédios (seção 6.5). */
 export const CAM = {
@@ -23,19 +23,34 @@ export function novoEstadoCamera(): EstadoCamera {
   return { yaw: 0, pitch: 0.28, perto: false };
 }
 
-/** Empurra um ponto para fora de toda caixa engordada pela margem. */
+/**
+ * Empurra um ponto para fora de toda caixa engordada pela margem (distância 3D ao ponto mais
+ * próximo da caixa). Empurrar pela direção do ponto mais próximo converge também em paredes
+ * diagonais feitas de várias caixas pequenas.
+ */
 export function pushOutOfBoxes(p: THREE.Vector3, m = CAM.margem): THREE.Vector3 {
-  for (let it = 0; it < 4; it++) {
+  for (let it = 0; it < 10; it++) {
     let mexeu = false;
-    for (const b of COLLIDERS) {
-      if (p.y > (b.h ?? Infinity) + m) continue;
-      const e = p.x - (b.minX - m), d = b.maxX + m - p.x, n = p.z - (b.minZ - m), s = b.maxZ + m - p.z;
-      if (e <= 0 || d <= 0 || n <= 0 || s <= 0) continue; // fora
-      const menor = Math.min(e, d, n, s);
-      if (menor === e) p.x = b.minX - m;
-      else if (menor === d) p.x = b.maxX + m;
-      else if (menor === n) p.z = b.minZ - m;
-      else p.z = b.maxZ + m;
+    for (const b of perto(p.x - m, p.x + m, p.z - m, p.z + m).slice()) {
+      const topo = b.h ?? 1e6;
+      const cx = Math.min(Math.max(p.x, b.minX), b.maxX);
+      const cz = Math.min(Math.max(p.z, b.minZ), b.maxZ);
+      const cy = Math.min(Math.max(p.y, 0), topo);
+      const dx = p.x - cx, dy = p.y - cy, dz = p.z - cz;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 >= m * m) continue;
+      if (d2 > 1e-9) {
+        const k = (m - Math.sqrt(d2)) / Math.sqrt(d2);
+        p.x += dx * k; p.y += dy * k; p.z += dz * k;
+      } else {
+        // dentro da caixa: sai pela face horizontal mais perto
+        const e = p.x - b.minX, d = b.maxX - p.x, n = p.z - b.minZ, s = b.maxZ - p.z;
+        const menor = Math.min(e, d, n, s);
+        if (menor === e) p.x = b.minX - m;
+        else if (menor === d) p.x = b.maxX + m;
+        else if (menor === n) p.z = b.minZ - m;
+        else p.z = b.maxZ + m;
+      }
       mexeu = true;
     }
     if (!mexeu) break;
@@ -44,7 +59,7 @@ export function pushOutOfBoxes(p: THREE.Vector3, m = CAM.margem): THREE.Vector3 
 }
 
 function dentro(p: THREE.Vector3, m: number): boolean {
-  for (const b of COLLIDERS) {
+  for (const b of perto(p.x - m, p.x + m, p.z - m, p.z + m)) {
     if (p.y > (b.h ?? Infinity) + m) continue;
     if (p.x > b.minX - m && p.x < b.maxX + m && p.z > b.minZ - m && p.z < b.maxZ + m) return true;
   }

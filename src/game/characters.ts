@@ -48,7 +48,7 @@ export const EQUIPES: Equipe[] = [
 ];
 
 export const MAPAS = [
-  { id: 'cidade', nome: 'Mapa 1 — Cidade', pronto: true },
+  { id: 'paulista', nome: 'Mapa 1 — Paulista', pronto: true },
   { id: 'esplanada', nome: 'Mapa 2 — Esplanada', pronto: false },
 ];
 

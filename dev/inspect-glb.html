@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="UTF-8"><title>Inspeção GLB (dev)</title></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const url = new URLSearchParams(location.search).get('f');
+new GLTFLoader().load(url, (g) => {
+  g.scene.updateMatrixWorld(true);
+  const raiz = new THREE.Box3().setFromObject(g.scene);
+  const linhas = [];
+  g.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const b = new THREE.Box3().setFromObject(o);
+    const s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+    linhas.push({ n: o.name, inst: !!o.isInstancedMesh, cnt: o.isInstancedMesh ? o.count : 1, tris: (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3,
+      sx: +s.x.toFixed(1), sy: +s.y.toFixed(1), sz: +s.z.toFixed(1), cx: +c.x.toFixed(1), cy: +c.y.toFixed(1), cz: +c.z.toFixed(1), unlit: o.material.type, tex: !!o.material.map });
+  });
+  window.__info = { caixa: { min: raiz.min.toArray(), max: raiz.max.toArray() }, escala: g.scene.scale.toArray(), filhos: g.scene.children.length, linhas };
+});
+</script></body></html>

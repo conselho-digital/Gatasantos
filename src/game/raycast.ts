@@ -1,4 +1,4 @@
-import { COLLIDERS, type Caixa } from './collision';
+import { aoLongoDoRaio, type Caixa } from './collision';
 
 /** Distância t em que o raio (o + t·d) entra na caixa (altura 0..h), ou Infinity. */
 export function raioCaixa(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, b: Caixa, max: number): number {
@@ -21,9 +21,18 @@ export function raioCaixa(ox: number, oy: number, oz: number, dx: number, dy: nu
 export function raioMundo(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, max: number): number {
   let melhor = max < 1e8 ? max + 1e-6 : Infinity;
   let achou = Infinity;
-  for (const b of COLLIDERS) {
-    const t = raioCaixa(ox, oy, oz, dx, dy, dz, b, max);
-    if (t < melhor) { melhor = t; achou = t; }
+  const h = Math.hypot(dx, dz);
+  const alcance = Math.min(max, 1000);
+  if (h > 1e-9) {
+    aoLongoDoRaio(ox, oz, dx / h, dz / h, alcance * h, (b) => {
+      const t = raioCaixa(ox, oy, oz, dx, dy, dz, b, max);
+      if (t < melhor) { melhor = t; achou = t; }
+    });
+  } else {
+    aoLongoDoRaio(ox, oz, 1, 0, 0.001, (b) => {
+      const t = raioCaixa(ox, oy, oz, dx, dy, dz, b, max);
+      if (t < melhor) { melhor = t; achou = t; }
+    });
   }
   if (dy < -1e-9) {
     const t = -oy / dy; // chão

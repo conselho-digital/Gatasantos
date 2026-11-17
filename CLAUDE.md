@@ -132,3 +132,23 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
   barram o óbvio). Anti-cheat de verdade exige canais privados com RLS em `realtime.messages` e validação no servidor.
   Sem voz (etapa 10), sem veículos remotos (etapa 8), sem sincronizar pedestres (são locais), troca de equipe ao vivo só recria o remoto.
   Nome repetido é permitido. Presença não tem teste de 30 jogadores (só `max=2`).
+
+## Rodada: Mapa 1 = Paulista (GLB do dono)
+- Decisão do dono: o mapa do menu "Mapa 1" agora é a **Paulista** (id `paulista`), no lugar da cidade por código. O arquivo é
+  do próprio dono (outro jogo dele), então a licença está ok. `public/models/mapa-paulista.glb` (9,1 MB; URL com `?v=1`).
+  O mapa simples por código continua só no dev: `?mapa=cidade`.
+- O GLB já está em metros e com o mesmo tamanho do jogo (250 x 198 m, altura até 70 m, centrado na origem; chão 244 x 192).
+  Usa instanciamento (`EXT_mesh_gpu_instancing`) e quantização, lidos pelo `GLTFLoader` do three r187. 142 materiais, 70 texturas PNG (4,5 MB).
+- `game/paulista.ts`: carrega o GLB (tela "Carregando mapa… N%") e **gera colisores da geometria**: triângulos quase verticais
+  (|ny| ≤ 0,8) entre 0,9 e 1,9 m viram células de 0,5 m (meio-fio abaixo de 0,9 m não bloqueia), fundidas em retângulos
+  (instâncias incluídas). Resultado: 619 colisores. Sombras do mapa desligadas (o sol não segue o jogador ainda).
+- `collision.ts` ganhou **grade espacial** (células de 8 m): `registrar`, `perto`, `aoLongoDoRaio` (DDA). `raycast.ts` e `camera.ts`
+  usam a grade. `pushOutOfBoxes` agora empurra pela direção do ponto mais próximo (converge em paredes feitas de várias caixas).
+- Medido (swiftshader, com 26 NPCs): **135 chamadas, 94,7 mil triângulos** (orçamento do mapa 1: ≤ 370 / ≤ 200 mil). Carrega em < 1 s local.
+  Build total 10,0 MB (limite 15 MB; o GLB é 9,3 MB: recomprimir texturas em WebP se faltar espaço).
+- Testes: 6 corridas contra paredes: 0 dentro de colisor, 6 pararam antes da parede; raio até a parede a 3 m = 3,0 m;
+  câmera ≥ 0,9 m das paredes em 64 posições (único 0,6 m foi num beco de 1,5 m entre jardineira e parede: impossível ter
+  0,9 m dos dois lados); multiplayer de 2 abas continua ok no mapa novo; 0 erros de página.
+- Limites: colisão só de paredes entre 0,9 e 1,9 m (marquises e passarelas altas não bloqueiam; escadas/rampas não existem);
+  terreno plano (sem `terrainHeight`); sem pickups/pedestres posicionados por mapa; o spawn cai na ciclovia da avenida
+  (escolher ponto na calçada depois); cartazes e lojas do GLB são texturas fixas (sem o sistema de cartazes pagos).

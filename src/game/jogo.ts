@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { criarCena } from './scene';
 import { criarCidade, LIMITE } from './city';
+import { criarPaulista } from './paulista';
 import { COLLIDERS, empurrarCirculo, pontoLivre } from './collision';
 import { apertou, botaoMouse, forcarBotao, consumirMouse, consumirRoda, eixoMovimento, iniciarMouse, limparToques, tecla } from './input';
 import { criarPersonagem } from './character';
@@ -16,6 +17,7 @@ import { Pedestres } from './npcs';
 import { ouvirRuido } from './noise';
 import { ARMAS, armaPorId, simularCadencia, tabelaTempoParaMatar, type ArmaId } from './weapons';
 import { Hud } from '../ui/hud';
+import { raioMundo } from './raycast';
 
 /** Escolhas feitas no menu inicial. */
 export interface ConfigJogo {
@@ -37,13 +39,21 @@ const PULO = 5.5;
 const TECLAS_ARMA: Record<string, ArmaId> = { Digit1: 'punho', Digit2: 'pistola', Digit3: 'fuzilA', Digit4: 'fuzilB', Digit5: 'fuzilC', Digit6: 'fuzilS' };
 
 /** Monta o mapa e inicia o laço. Só roda depois do "Entrar" (nada é montado antes). */
-export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
+export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Promise<void> {
   const { renderer, scene, camera } = criarCena();
   camera.fov = FOV;
   iniciarMouse(renderer.domElement);
   if (cfg.travarMouse) renderer.domElement.requestPointerLock?.();
 
-  const cidade = criarCidade();
+  // Mapa: Paulista (GLB do dono) por padrão; `?mapa=cidade` usa o mapa simples por código (dev).
+  const aviso = document.createElement('div');
+  aviso.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0b0f14;color:#fff;font:22px system-ui;z-index:5';
+  aviso.textContent = 'Carregando mapa…';
+  document.body.appendChild(aviso);
+  const cidade = params.get('mapa') === 'cidade' || cfg.mapa === 'cidade'
+    ? criarCidade()
+    : await criarPaulista((p) => { aviso.textContent = `Carregando mapa… ${Math.round(p * 100)}%`; });
+  aviso.remove();
   scene.add(cidade.grupo);
 
   const boneco = criarPersonagem(achar(cfg.personagem));
@@ -60,7 +70,7 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   const pos = { x: 0, z: 0 };
   let giro = 0; // direção do corpo
   const cam = novoEstadoCamera();
-  const [px, pz] = (params.get('pos') ?? '0,0').split(',').map(Number);
+  const [px, pz] = params.get('pos') ? params.get('pos')!.split(',').map(Number) : [cidade.spawn.x, cidade.spawn.z];
   pos.x = px || 0;
   pos.z = pz || 0;
   empurrarCirculo(pos.x, pos.z, RAIO, pos);
@@ -306,6 +316,7 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
       setYaw: (a: number) => { cam.yaw = a; },
       look: cam,
       colliders: COLLIDERS,
+      raioMundo,
       validate: cidade.validate,
       combat: () => combate,
       npcs: () => npcs.resumo(),
