@@ -8,8 +8,13 @@ export function tecla(codigo: string): boolean {
   return teclas.has(codigo);
 }
 
+/** Joystick virtual (celular): x/y em -1..1. */
+let joyX = 0;
+let joyY = 0;
+
 /** Eixos de movimento: x = direita(+)/esquerda(-), y = frente(+)/trás(-). */
 export function eixoMovimento(): { x: number; y: number } {
+  if (joyX || joyY) return { x: joyX, y: joyY };
   const x = (tecla('KeyD') ? 1 : 0) - (tecla('KeyA') ? 1 : 0);
   const y = (tecla('KeyW') ? 1 : 0) - (tecla('KeyS') ? 1 : 0);
   return { x, y };
@@ -80,4 +85,28 @@ export function limparToques(): void {
 export function forcarBotao(b: number, valor: boolean): void {
   if (valor) botoes.add(b);
   else botoes.delete(b);
+}
+
+// ---- Entrada virtual (celular): os botões de toque entram pelos mesmos caminhos do teclado e do mouse ----
+
+export function definirJoystick(x: number, y: number): void {
+  joyX = x;
+  joyY = y;
+}
+
+/** Tecla virtual segurada (Shift, C, Espaço, W/S/A/D nos pedais). */
+export function injetarTecla(codigo: string, valor: boolean): void {
+  if (valor) teclas.add(codigo);
+  else teclas.delete(codigo);
+}
+
+/** Aperto de uma tecla (vale uma vez): F, V, R, X, E. */
+export function injetarToque(codigo: string): void {
+  toques.add(codigo);
+}
+
+/** Giro da câmera por arrasto (mesma conta do mouse: pixels). */
+export function injetarGiro(ddx: number, ddy: number): void {
+  dx += ddx;
+  dy += ddy;
 }

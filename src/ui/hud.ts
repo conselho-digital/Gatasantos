@@ -24,6 +24,11 @@ const CSS = `
 .gh-placar table{width:100%;border-collapse:collapse}.gh-placar td,.gh-placar th{padding:4px 8px;text-align:left}.gh-placar .eu{color:#ffd400}
 .gh-vel{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);font:700 34px system-ui}
 .gh-dica{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);background:#000a;border-radius:10px;padding:6px 14px}
+.gh.toque .gh-bar{bottom:auto;top:64px;width:min(190px,28vw)}
+.gh.toque .gh-arma{right:auto;bottom:auto;left:max(12px,env(safe-area-inset-left));top:96px;text-align:left;font-size:20px}
+.gh.toque .gh-feed{top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:50vw;font-size:16px}
+.gh.toque .gh-vel{bottom:auto;top:16px;font-size:28px}
+.gh.toque .gh-dica{display:none}
 .gh-fps{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:18px;opacity:.8}
 `;
 
@@ -43,11 +48,11 @@ export class Hud {
   private vel: HTMLElement;
   private dicaEl: HTMLElement;
 
-  constructor() {
+  constructor(toque = false) {
     const st = document.createElement('style');
     st.textContent = CSS;
     document.head.appendChild(st);
-    this.raiz.className = 'gh';
+    this.raiz.className = toque ? 'gh toque' : 'gh';
     this.raiz.innerHTML = `
       <div class="gh-mira"></div><div class="gh-mx"></div>
       <div class="gh-feed"></div>

@@ -183,3 +183,19 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Limites: **sem som** (motor, buzina, sirene, batida: etapa 9) e sem faíscas; sem animação de abrir/fechar porta nem `door_L/R`;
   veículo estacionado não é obstáculo para pessoas (sem colisão veículo×pessoa nem veículo×veículo); só o dono dirige (sem equipe/passageiro);
   sem empinar a moto (Shift) nem buzina; sem veículos vistos de longe com corte por distância; a saída de A no remoto só foi testada em partes.
+
+## Rodada: Etapa 13 — Celular (prioridade do dono: a maioria dos acessos vem do celular)
+- Pedido do dono: preparar o jogo para **mobile**. Controles de toque (`ui/touch.ts`) aparecem quando `pointer: coarse` (ou `?touch=1` no dev);
+  entram pelos mesmos caminhos do teclado/mouse (`input.ts`: `injetarTecla`, `injetarToque`, `injetarGiro`, `definirJoystick`, `forcarBotao`),
+  então o jogo não tem lógica separada para celular. Arrastar o resto da tela gira a câmera com a mesma conta do mouse (sensibilidade × fov).
+- A pé: joystick à esquerda (sempre anda devagar), CORRER (continua 0,5 s depois de soltar), TIRO ×2 e MIRAR ×2 (ligados entre si),
+  PULAR, ABAIXAR, ARMA (próxima), RECAR., GARAGEM, PORTA (só perto de veículo). Dirigindo: joystick = volante, ACEL., FREIO, MÃO,
+  LUZ (viatura), SAIR. Vibração curta (Android). Vários dedos ao mesmo tempo (andar + atirar).
+- HUD no modo toque: vida/colete e arma/munição no canto superior esquerdo, velocímetro no topo, texto ≥ 16–18 px, margens `env(safe-area-inset-*)`.
+  Em retrato aparece "Gire o celular para jogar na horizontal". Tela cheia + paisagem já pedidos ao entrar (rodada anterior).
+- Testes (emulação 844x390, toque por CDP, relógio do jogo): joystick anda 4,5 m em 2 s (andar 2,1 m/s); arrastar 80 px gira a câmera;
+  TIRO 0,6 s = 9 tiros; MIRAR leva o FOV 60 → 42; PULAR sobe 0,81 m; andar e atirar juntos (+13 tiros); PORTA aparece perto do carro,
+  entra, vê ACEL./FREIO/MÃO/SAIR, ACEL. leva a 23 m/s em 3 s; 0 erros de página.
+- Limites: **não testado em celular de verdade** (só emulação); sem minimapa; ARMA troca para a próxima (sem menu de seleção);
+  sem botão de microfone (voz é a etapa 10); sem pausa/engrenagem no celular (etapa 11); botão de pular não escala sozinho obstáculos;
+  desempenho real (30+ FPS) precisa ser medido num aparelho.

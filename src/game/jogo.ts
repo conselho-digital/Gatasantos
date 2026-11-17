@@ -18,6 +18,7 @@ import { ouvirRuido } from './noise';
 import { ARMAS, armaPorId, simularCadencia, tabelaTempoParaMatar, type ArmaId } from './weapons';
 import { Hud } from '../ui/hud';
 import { Conducao } from './driving';
+import { criarControlesToque } from '../ui/touch';
 import { MODELOS } from './vehicle';
 import { abrirGaragem, type EscolhaGaragem } from '../ui/garage';
 import { raioMundo } from './raycast';
@@ -85,7 +86,9 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
   ouvirRuido((x, z, raio) => npcs.assustar(x, z, raio));
 
   // HUD
-  const hud = new Hud();
+  const usaToque = grosso || params.get('touch') === '1';
+  const hud = new Hud(usaToque);
+  const toque = usaToque ? criarControlesToque() : null;
   hud.feed(`Bem-vindo, ${cfg.nome}!`);
 
   // Tiros: traçadores curtos
@@ -373,6 +376,12 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     hud.armaMunicao(combate.arma.nome, combate.balas.pente, combate.balas.reserva, combate.recarregando, combate.arma.corpoACorpo);
     hud.mirando(mirando);
     hud.veiculo(conducao.dirigindo ? est.kmh : null);
+    toque?.estado({
+      dirigindo: conducao.dirigindo,
+      pertoVeiculo: !!conducao.veiculo && conducao.modo === 'a_pe' && Math.hypot(conducao.veiculo.x - pos.x, conducao.veiculo.z - pos.z) < 7,
+      veiculoViatura: conducao.veiculo?.modelo.tipo === 'viatura',
+      corpoACorpo: combate.arma.corpoACorpo,
+    });
     const perto = conducao.veiculo && conducao.modo === 'a_pe' && !preso && Math.hypot(conducao.veiculo.x - pos.x, conducao.veiculo.z - pos.z) < 7;
     hud.dica(perto ? 'F — entrar no veículo' : conducao.dirigindo ? 'F — sair (pare antes)' : garagemAberta ? '' : '');
     hud.texto(morto ? `Você morreu — renasce em ${combate.morto.toFixed(1)} s` : combate.protecao > 0 ? '' : '');
