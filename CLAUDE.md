@@ -110,7 +110,7 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 ## Rodada: Etapa 6 — Multiplayer (Supabase Realtime, SEM login)
 - Projeto Supabase novo **`gatasantos`** (ref `micrzdzbhglvskrdboyj`, eu-west-1), vazio: o multiplayer só usa Realtime (sem tabelas).
   `.env.local` (fora do git) e variáveis `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (chave **publishable**, pública) também
-  configuradas na Vercel (production/preview/development). `.env.example` documenta. Nunca pôr chave secreta (`service_role`).
+  configuradas na Vercel (production/preview/development). `.env.example` documenta. Nunca pôr chave secreta (a de serviço do Supabase).
 - Decisão do dono: **sem login Google**; o menu só pede o **nome** (obrigatório). Sem login não há ranking global, compras
   nem admin (dependem de identidade/RLS): ficam para quando houver login.
 - `net/supabase.ts` (cliente), `net/sala.ts` (canal `arena:<mapa>`, `-2`, `-3`… até 12; **máx. 30**, `?max=N` no dev; ouvintes
