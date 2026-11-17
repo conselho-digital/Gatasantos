@@ -152,3 +152,8 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Limites: colisão só de paredes entre 0,9 e 1,9 m (marquises e passarelas altas não bloqueiam; escadas/rampas não existem);
   terreno plano (sem `terrainHeight`); sem pickups/pedestres posicionados por mapa; o spawn cai na ciclovia da avenida
   (escolher ponto na calçada depois); cartazes e lojas do GLB são texturas fixas (sem o sistema de cartazes pagos).
+
+## Rodada: Tela cheia e paisagem ao entrar
+- Pedido do dono: ao clicar em "Entrar no jogo" a tela vai para **tela cheia** e tenta **travar a paisagem** (`entrarEmTelaCheia()` em `ui/menu.ts`,
+  chamada dentro do clique para o navegador aceitar). Trava de orientação só existe em celular/tablet (Android/Chrome); iPhone não
+  deixa (segue sem). Testado: emulação de celular 844x390 entra com `fullscreenElement = HTML`, 0 erros.

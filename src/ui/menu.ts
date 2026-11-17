@@ -68,6 +68,22 @@ const CSS = `
 .gm-fechar{position:sticky;top:0;float:right;min-height:48px;padding:8px 18px;border:0;border-radius:12px;background:#3b82f6;color:#fff;font:700 18px system-ui;cursor:pointer}
 `;
 
+/**
+ * Tela cheia e paisagem travada ao entrar (precisa rodar dentro do clique, lição 21).
+ * A trava de orientação só funciona em celular/tablet e depois de entrar em tela cheia.
+ */
+export function entrarEmTelaCheia(): void {
+  try {
+    const el = document.documentElement;
+    if (document.fullscreenElement || !el.requestFullscreen) return;
+    void el.requestFullscreen({ navigationUI: 'hide' })
+      .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+      .catch(() => undefined); // navegador não deixou (ex.: iPhone): segue sem
+  } catch {
+    /* sem tela cheia: segue */
+  }
+}
+
 /** Menu inicial: fundo liso, foto do rosto, nome, equipe e mapa. Devolve a escolha ao clicar em Entrar. */
 export function mostrarMenu(): Promise<ConfigJogo> {
   const estilo = document.createElement('style');
@@ -183,6 +199,7 @@ export function mostrarMenu(): Promise<ConfigJogo> {
       const nome = bruto;
       salvo.nome = nome;
       gravar(salvo);
+      entrarEmTelaCheia();
       raiz.remove();
       estilo.remove();
       // Chamado dentro do clique: permite tela cheia e mouse preso (lição 21).
