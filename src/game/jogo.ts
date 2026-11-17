@@ -22,6 +22,7 @@ import { gravarConfig, lerConfig } from './settings';
 import { definirJoystick } from './input';
 import { Conducao } from './driving';
 import { Som, type Controle, type Motor, type TipoTiro } from './audio';
+import { Voz } from '../net/voz';
 import { criarControlesToque } from '../ui/touch';
 import { MODELOS } from './vehicle';
 import { abrirGaragem, type EscolhaGaragem } from '../ui/garage';
@@ -143,8 +144,18 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       receberDano: (v) => combate.danoEmMim(v),
       meuEstado: () => ({ x: pos.x, y: altura, z: pos.z }),
       som,
+      rtc: (m) => { void voz?.receber(m); },
     },
   );
+
+  // Voz por proximidade: aperte para falar (T ou botão do microfone). Só liga com o microfone liberado.
+  const voz = som && params.get('voz') !== '0' ? new Voz(som, {
+    meuId: online.eu.id,
+    enviar: (m) => online.enviarRtc(m),
+    vizinhos: () => [...online.remotos.mapa.values()].map((r) => ({ id: r.info.id, x: r.x, z: r.z, vz: r.info.vz === true })),
+    publicar: (on) => { void online.atualizarVoz(on); },
+  }) : null;
+  let tAntes = false;
 
   // Tudo que pode ser acertado: pedestres + jogadores remotos (o mais perto vence)
   const remotosAlvo = online.alvosRemotos();
@@ -500,6 +511,16 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     });
     cliqueAntes = botaoMouse(0);
 
+    // Voz: T / botão do microfone (aperte para falar)
+    if (voz) {
+      const t = tecla('KeyT') && !pausado;
+      if (t && !tAntes) { void voz.ativar().then((ok) => { if (!ok && voz.estado === 'negada') hud.feed('Microfone bloqueado: libere nas permissões do navegador'); else if (ok) voz.apertar(tecla('KeyT')); }); if (voz.ligada) voz.apertar(true); }
+      if (!t && tAntes) voz.apertar(false);
+      tAntes = t;
+      voz.atualizar(dt, pos.x, pos.z);
+      hud.microfone(voz.estado === 'pronta' ? (voz.falando ? '🎤 falando' : '🎤 T para falar') : voz.estado === 'negada' ? '🎤 bloqueado' : '', voz.falando);
+    }
+
     // Rede: jogadores remotos (interpolados) e o meu estado
     online.remotos.atualizar(dt);
     if (online.ativo) {
@@ -573,6 +594,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       combat: () => combate,
       conducao,
       som,
+      voz,
       config,
       pausar: () => abrirPausaUi(),
       estaPausado: () => pausado,

@@ -28,6 +28,8 @@ export interface PresencaJogador {
   eq: { n: string; c1: number; c2: number };
   /** Veículo estacionado (garagem): modelo, cor, posição e direção. */
   veh?: { m: number; c: number; x: number; z: number; h: number };
+  /** Voz ligada (microfone liberado): só quem liga conecta com os outros. */
+  vz?: boolean;
 }
 
 export function limparPresenca(v: unknown): PresencaJogador | null {
@@ -42,6 +44,7 @@ export function limparPresenca(v: unknown): PresencaJogador | null {
     nome: limparNome(o.nome),
     pers: typeof o.pers === 'string' ? o.pers.slice(0, 24) : 'Astro',
     eq: { n: limparNome(eq.n).slice(0, 20), c1: cor(eq.c1), c2: cor(eq.c2) },
+    vz: o.vz === true,
     veh: veh ? { m: num(veh.m, 0, 5) | 0, c: num(veh.c, 0, 4) | 0, x: num(veh.x, -LIM, LIM), z: num(veh.z, -LIM, LIM), h: num(veh.h, -10, 10) } : undefined,
   };
 }

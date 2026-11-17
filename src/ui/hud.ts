@@ -34,7 +34,10 @@ const CSS = `
 .gh.toque .gh-vel{bottom:auto;top:var(--mt);font-size:clamp(20px,6vh,28px)}
 .gh.toque .gh-dica{display:none}
 .gh.toque .gh-eng{top:var(--mt);right:max(10px,env(safe-area-inset-right));width:var(--b);height:var(--b);font-size:clamp(20px,6vh,28px)}
-.gh.toque .gh-fps{top:auto;bottom:max(6px,env(safe-area-inset-bottom));left:50%;right:auto;transform:translateX(-50%);font-size:12px;opacity:.6}
+.gh.toque .gh-mic{position:absolute;left:max(12px,env(safe-area-inset-left));top:calc(var(--mt,12px) + 118px);font-size:15px;background:#0007;border-radius:8px;padding:2px 8px}
+.gh-mic.fala{background:#16a34a;font-weight:700}
+.gh.toque .gh-mic{top:calc(var(--mt) + clamp(76px,22vh,110px))}
+.gh-fps{top:auto;bottom:max(6px,env(safe-area-inset-bottom));left:50%;right:auto;transform:translateX(-50%);font-size:12px;opacity:.6}
 .gh-fps{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:18px;opacity:.8}
 `;
 
@@ -54,6 +57,7 @@ export class Hud {
   private vel: HTMLElement;
   private dicaEl: HTMLElement;
   private eng: HTMLElement;
+  private mic: HTMLElement;
 
   constructor(toque = false) {
     const st = document.createElement('style');
@@ -64,7 +68,7 @@ export class Hud {
       <div class="gh-mira"></div><div class="gh-mx"></div>
       <div class="gh-feed"></div>
       <div class="gh-aviso"></div>
-      <div class="gh-fps"></div><div class="gh-placar" hidden></div><div class="gh-vel" hidden></div><div class="gh-dica" hidden></div><button class="gh-eng" type="button" aria-label="Pausa e configurações">⚙</button>
+      <div class="gh-fps"></div><div class="gh-placar" hidden></div><div class="gh-vel" hidden></div><div class="gh-dica" hidden></div><div class="gh-mic" hidden></div><button class="gh-eng" type="button" aria-label="Pausa e configurações">⚙</button>
       <div class="gh-bar"><div class="gh-nv"></div>
         <div class="gh-barra gh-v"><i></i></div><div class="gh-barra gh-c"><i></i></div></div>
       <div class="gh-arma"></div>`;
@@ -82,6 +86,7 @@ export class Hud {
     this.vel = q('.gh-vel');
     this.dicaEl = q('.gh-dica');
     this.eng = q('.gh-eng');
+    this.mic = q('.gh-mic');
   }
 
   barras(vida: number, colete: number): void {
@@ -127,6 +132,13 @@ export class Hud {
     }
     this.placarEl.replaceChildren(tab);
     this.placarEl.hidden = false;
+  }
+
+  /** Microfone: texto de estado (vazio esconde); `fala` destaca quando está transmitindo. */
+  microfone(texto: string, fala: boolean): void {
+    this.mic.hidden = !texto;
+    if (this.mic.textContent !== texto) this.mic.textContent = texto;
+    this.mic.classList.toggle('fala', fala);
   }
 
   /** Botão de pausa (engrenagem). */

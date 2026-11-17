@@ -4,6 +4,7 @@ import { Sala, MAX_SESSAO } from '../net/sala';
 import { temSupabase } from '../net/supabase';
 import { limparBuzina, limparDano, limparKill, limparMover, limparTiro, type Mover, type PresencaJogador } from '../net/clean';
 import type { Som, Controle } from './audio';
+import type { MensagemRtc } from '../net/voz';
 import { plausible } from '../net/plausible';
 import { ARMAS } from './weapons';
 import type { Alvo, Alvos, ContextoTiro } from './combat';
@@ -22,6 +23,8 @@ interface Ganchos {
   receberDano(valor: number): boolean;
   meuEstado(): { x: number; y: number; z: number };
   som: Som | null;
+  /** Sinalização de voz que chegou para mim. */
+  rtc?(m: MensagemRtc): void;
 }
 
 /** Liga o jogo ao Supabase Realtime: presença, movimento, tiros, danos e abates. */
@@ -85,6 +88,11 @@ export class Online {
         const quem = this.remotos.mapa.get(d.de)?.info.nome ?? 'alguém';
         this.g.feed(`${quem} derrubou você`);
       }
+    } else if (nome === 'rtc') {
+      const o = payload as Record<string, unknown> | null;
+      if (o && typeof o.i === 'string' && typeof o.p === 'string' && (o.t === 'o' || o.t === 'a' || o.t === 'c') && o.p === this.eu.id) {
+        this.g.rtc?.({ i: o.i, p: o.p, t: o.t, d: o.d });
+      }
     } else if (nome === 'buz') {
       const b = limparBuzina(payload);
       if (!b || b.i === this.eu.id || !this.g.som) return;
@@ -126,6 +134,17 @@ export class Online {
     if (this.tMove < (parado ? 0.25 : 1 / 12)) return;
     this.tMove = 0;
     this.sala.enviar('move', { i: this.eu.id, ...m });
+  }
+
+  /** Sinalização WebRTC (offer/answer/ice) para um jogador específico. */
+  enviarRtc(m: MensagemRtc): void {
+    this.sala?.enviar('rtc', m);
+  }
+
+  /** Voz ligada/desligada: quem liga passa a conectar com os vizinhos (presence). */
+  async atualizarVoz(ligado: boolean): Promise<void> {
+    this.eu.vz = ligado;
+    await this.sala?.atualizarEu({ ...this.eu });
   }
 
   /** Atualiza o veículo estacionado que os outros veem (presence). */

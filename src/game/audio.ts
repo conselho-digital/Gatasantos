@@ -17,6 +17,13 @@ interface Saida extends GainNode {
   pan: StereoPannerNode;
 }
 
+export interface ParVoz {
+  readonly nivel: number;
+  readonly alcance: number;
+  atualizar(x: number, z: number, dt: number): void;
+  parar(): void;
+}
+
 export interface Controle {
   parar(): void;
 }
@@ -378,6 +385,52 @@ export class Som {
   }
 
   // usado pela classe Motor
+  /**
+   * Voz de outro jogador (stream WebRTC): volume cheio até 0,75 m e cai com a distância; o **alcance depende do volume da voz**
+   * (`3 m × (0,1 + 0,9 × nível)`, nível = RMS suavizado de −58 dB (0) a −18 dB (1)). Lado pela posição.
+   */
+  vozRemota(stream: MediaStream): ParVoz {
+    const ctx = this.ctx;
+    // Chrome só entrega o áudio de um stream remoto ao WebAudio se um elemento de mídia (mudo) o consumir
+    const el = new Audio();
+    el.srcObject = stream;
+    el.muted = true;
+    void el.play().catch(() => undefined);
+    const fonte = (ctx as AudioContext).createMediaStreamSource(stream);
+    const an = ctx.createAnalyser();
+    an.fftSize = 512;
+    const ganho = ctx.createGain();
+    ganho.gain.value = 0;
+    const pan = ctx.createStereoPanner();
+    fonte.connect(an);
+    fonte.connect(ganho).connect(pan).connect(this.barras.voz);
+    const buf = new Float32Array(an.fftSize);
+    let nivel = 0;
+    return {
+      get nivel() { return nivel; },
+      get alcance() { return 3 * (0.1 + 0.9 * nivel); },
+      atualizar: (x, z, dt) => {
+        an.getFloatTimeDomainData(buf);
+        let s = 0;
+        for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+        const db = 20 * Math.log10(Math.sqrt(s / buf.length) + 1e-9);
+        const alvo = Math.min(1, Math.max(0, (db + 58) / 40));
+        nivel += (alvo - nivel) * Math.min(1, dt * (alvo > nivel ? 14 : 3)); // sobe rápido, desce devagar
+        const R = 3 * (0.1 + 0.9 * nivel);
+        const dx = x - this.ouvX, dz = z - this.ouvZ, d = Math.hypot(dx, dz);
+        const g = d <= 0.75 ? 1 : d >= R || R <= 0.75 ? (d <= R ? 1 : 0) : Math.pow((R - d) / (R - 0.75), 1.5);
+        ganho.gain.setTargetAtTime(g, ctx.currentTime, 0.05);
+        const lado = d > 0.3 ? (dx * -Math.cos(this.ouvYaw) + dz * Math.sin(this.ouvYaw)) / d : 0;
+        pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, lado)), ctx.currentTime, 0.05);
+      },
+      parar: () => {
+        ganho.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
+        try { fonte.disconnect(); ganho.disconnect(); pan.disconnect(); an.disconnect(); } catch { /* já solto */ }
+        el.srcObject = null;
+      },
+    };
+  }
+
   /** Só para a classe Motor. */
   _interno() {
     return { ctx: this.ctx, saida: this.saida.bind(this), osc: this.osc.bind(this), ruidoFonte: this.ruidoFonte.bind(this), espacial: this.espacial.bind(this) };

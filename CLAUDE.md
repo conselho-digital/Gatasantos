@@ -261,3 +261,19 @@ para fora do carro, mira em "segurar" e câmera com o arrasto vertical ao contr�
 - **Arrasto vertical invertido (celular e PC)**: arrastar/mover para baixo = olhar para baixo (`pitch + dy`). Testado: arrastar 70 px para baixo pitch 0,28 → 0,52; 100 px para cima → 0,18.
 - **CORRER no lado direito** (pedido do dono): ao lado esquerdo do PULAR, na mesma linha do TIRO; o lado esquerdo ficou com joystick, TIRO 2 e MIRAR 2. Teste de 6 tamanhos segue ok (sem sobreposição).
 - Limites: testado só em emulação (sem aparelho real); em retrato aparece "Gire o celular"; botões do HUD de toque em < 44 px não existem (mínimo do `clamp`).
+
+## Rodada: Etapa 10 — Voz por proximidade (WebRTC)
+- `net/voz.ts` (`Voz`): **aperte para falar** (tecla **T** no PC; botão **MIC** no celular, no topo, segurar). Transmite só enquanto apertado, com **0,25 s de folga**;
+  solta ao perder o foco (`blur` e aba escondida). O microfone só é pedido no primeiro aperto (gesto do usuário), **sem ganho automático**
+  (o alcance depende do volume real). Ouvir não depende de apertar. Quem não ligou a voz **não abre conexão** (flag `vz` na presence).
+- WebRTC direto entre navegadores; sinalização (offer/answer/ice) pelo canal Realtime (evento `rtc`, validado: só mensagens dirigidas a mim, tipos `o/a/c`);
+  STUN público do Google, **sem TURN** (algumas redes — dados móveis com NAT simétrico, redes corporativas — não conectam; o jogo avisa só se o microfone for bloqueado).
+  Conecta a **3,4 m**, desliga a **4,5 m**, no máx. **8 conversas**; quem tem o id menor oferece (evita duas ofertas ao mesmo tempo).
+- `Som.vozRemota(stream)` (`audio.ts`): volume cheio até 0,75 m e cai com a distância; **alcance = 3 m × (0,1 + 0,9 × nível)**, nível = RMS suavizado do áudio recebido
+  de −58 dB (0) a −18 dB (1); lado (pan) pela posição; vai pelo barramento `voz`. Elemento de mídia mudo consome o stream (exigência do Chrome).
+- HUD: "🎤 T para falar" / "🎤 falando" / "🎤 bloqueado". `?voz=0` desliga. Dev: `__game.voz` (`ativar()`, `apertar(bool)`, `conversas()`).
+- Testes (3 abas, microfone falso do Chromium, relógio do jogo): sem ativar a voz nenhuma conversa abre; A e B ativam a 2 m e ficam `connected`; **A fala → B recebe
+  nível 0,47–0,79 e alcance 1,6–2,4 m**; A solta → A para de transmitir e o nível em B cai a 0; B a 6 m → conversa fecha dos dois lados; volta a 2 m → reconecta;
+  C com voz ligada a 40 m não conecta; 0 erros de página. Teste de MIC no layout de toque: 6 tamanhos sem sobreposição.
+- Limites: **círculo da voz no chão não foi desenhado**; sem teste com 8 conversas simultâneas nem em redes móveis reais; sem ducking dos outros sons sob a voz
+  (o barramento `voz` já existe); sem opção de volume da voz nas configurações; iPhone antigo pode negar o microfone fora de HTTPS (o site é HTTPS).

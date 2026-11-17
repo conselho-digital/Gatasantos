@@ -207,6 +207,7 @@ export class Remotos {
     for (const p of lista) {
       const atual = this.mapa.get(p.id);
       if (atual && JSON.stringify(atual.info.veh) !== JSON.stringify(p.veh)) atual.setParado(p.veh);
+      if (atual) atual.info.vz = p.vz; // voz ligada/desligada: sem recriar o jogador
       if (atual && (atual.info.pers !== p.pers || atual.info.eq.c1 !== p.eq.c1 || atual.info.eq.c2 !== p.eq.c2 || atual.info.nome !== p.nome)) {
         atual.dispose(); // personagem/equipe mudou: recria (atualiza ao vivo)
         this.mapa.delete(p.id);

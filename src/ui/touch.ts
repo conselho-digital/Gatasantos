@@ -193,7 +193,8 @@ export function criarControlesToque(): ControlesToque {
   // Topo à direita (a engrenagem do HUD fica no canto): ARMA, RECAR., PORTA (perto de veículo)
   botao({ rotulo: 'ARMA', r: `calc(${b} + ${g})`, t: '0px', tam: b, toque: () => injetarToque('KeyX') });
   botao({ rotulo: 'RECAR.', r: `calc(2 * (${b} + ${g}))`, t: '0px', tam: b, toque: () => injetarToque('KeyR') });
-  botao({ rotulo: 'PORTA', r: `calc(3 * (${b} + ${g}))`, t: '0px', tam: b, classe: 'vermelho', toque: () => injetarToque('KeyF'), visivel: 'porta' });
+  botao({ rotulo: 'PORTA', r: `calc(4 * (${b} + ${g}))`, t: '0px', tam: b, classe: 'vermelho', toque: () => injetarToque('KeyF'), visivel: 'porta' });
+  botao({ rotulo: 'MIC', r: `calc(3 * (${b} + ${g}))`, t: '0px', tam: b, segurar: tecla('KeyT'), visivel: 'sempre' });
   // Dirigindo: pedais à direita, volante (joystick) à esquerda, buzina/luz/sair
   botao({ rotulo: 'ACEL.', r: '0px', b: '0px', tam: B, classe: 'vermelho', segurar: tecla('KeyW'), visivel: 'dirigindo' });
   botao({ rotulo: 'FREIO', r: `calc(${B} + ${g})`, b: '0px', tam: `calc(${b} * 1.15)`, segurar: tecla('KeyS'), visivel: 'dirigindo' });
@@ -213,6 +214,7 @@ export function criarControlesToque(): ControlesToque {
     for (const x of botoes) {
       const m = x.dataset.modo;
       x.hidden = !(
+        m === 'sempre' ||
         (m === 'pe' && !e.dirigindo) ||
         (m === 'dirigindo' && e.dirigindo) ||
         (m === 'viatura' && e.dirigindo && e.veiculoViatura) ||
