@@ -37,14 +37,6 @@ export function criarCena(): Cena {
   Object.assign(sol.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 120 });
   scene.add(sol);
 
-  const chao = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 400),
-    new THREE.MeshLambertMaterial({ color: 0x6f8f5a }),
-  );
-  chao.rotation.x = -Math.PI / 2;
-  chao.receiveShadow = true;
-  scene.add(chao);
-
   const resize = () => {
     renderer.setSize(innerWidth, innerHeight);
     camera.aspect = innerWidth / innerHeight;

@@ -26,3 +26,14 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Medido (swiftshader): 3 chamadas, 26 triângulos, 0 erros de página.
 - Deploy na Vercel funcionando (`gatasantos.vercel.app`). Sem domínio real ainda; redirecionamento www removido do `vercel.json`.
 - Skills (`.claude/skills`) ainda não instaladas: origem é um repositório fora do escopo.
+
+## Rodada: Etapa 2 — Mapa 1 simples
+- `city.ts`: avenida (z −12..12, 4 faixas), rua perimetral 12 m, calçada de pedra, muro preto 4 m, 6 prédios.
+  Limite jogável 244 x 192 m (`LIMITE`). `validate()` roda só no dev e avisa prédio em rua ou sobreposto (0 avisos).
+- Prédios: geometria fundida por tipo de fachada (UV em metros; fachada 12 x 3 m com laje de 0,2 m, pilares, janelas).
+- `textures.ts` (canvas sRGB), `collision.ts` (`COLLIDERS`, `empurrarCirculo`), `input.ts` (WASD, Shift corre, setas giram).
+- Jogador provisório (cápsula) até a etapa 3. `?pos=x,z`, `?cam=x,y,z,ax,ay,az`; `__game` no dev.
+- Medido (swiftshader): 20–22 chamadas, 300–460 triângulos, 0 erros de página.
+- Teste: correr 9 s contra prédio parou em z = −36,6 (face −37 − raio 0,4); contra o muro parou em x = 121,6;
+  diagonal desliza pela parede; 0 amostras dentro de colisor.
+- Limites: sem avenida com ruas transversais, parque nem calçadas detalhadas (etapa 12); câmera ainda atravessa prédio (etapa 3).
