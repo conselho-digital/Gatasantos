@@ -259,4 +259,5 @@ para fora do carro, mira em "segurar" e câmera com o arrasto vertical ao contr�
 - **Mira no celular é alternar**: um toque liga, outro desliga; os 2 botões MIRAR ficam ligados entre si; desliga sozinha ao dirigir ou com arma de mão.
   Testado: toque → FOV 60→42 e continua mirando com o dedo solto; 2º toque → 60; botão da esquerda também alterna e liga os dois.
 - **Arrasto vertical invertido (celular e PC)**: arrastar/mover para baixo = olhar para baixo (`pitch + dy`). Testado: arrastar 70 px para baixo pitch 0,28 → 0,52; 100 px para cima → 0,18.
+- **CORRER no lado direito** (pedido do dono): ao lado esquerdo do PULAR, na mesma linha do TIRO; o lado esquerdo ficou com joystick, TIRO 2 e MIRAR 2. Teste de 6 tamanhos segue ok (sem sobreposição).
 - Limites: testado só em emulação (sem aparelho real); em retrato aparece "Gire o celular"; botões do HUD de toque em < 44 px não existem (mínimo do `clamp`).

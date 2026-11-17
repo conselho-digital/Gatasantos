@@ -185,10 +185,11 @@ export function criarControlesToque(): ControlesToque {
   botao({ rotulo: 'MIRAR', r: `calc((${B} - ${b}) / 2)`, b: `calc(${B} + ${g})`, alternar: mira, grupo: 'mira' });
   botao({ rotulo: 'PULAR', r: `calc(${B} + ${g})`, b: '0px', tam: `calc(${b} * 1.15)`, segurar: tecla('Space') });
   botao({ rotulo: 'ABAIXAR', r: `calc(${B} + ${g})`, b: `calc(${b} * 1.15 + ${g})`, segurar: tecla('KeyC') });
-  // A pé — esquerda (ao lado do joystick): CORRER, TIRO 2, MIRAR 2
-  botao({ rotulo: 'CORRER', l: `calc(${J} + ${g})`, b: '0px', segurar: correr });
-  botao({ rotulo: 'TIRO', l: `calc(${J} + ${g})`, b: `calc(${b} + ${g})`, classe: 'vermelho', segurar: atira, grupo: 'tiro' });
-  botao({ rotulo: 'MIRAR', l: `calc(${J} + ${g})`, b: `calc(2 * (${b} + ${g}))`, alternar: mira, grupo: 'mira' });
+  // CORRER fica do lado direito, ao lado do PULAR (pedido do dono)
+  botao({ rotulo: 'CORRER', r: `calc(${B} + ${b} * 1.15 + 2 * ${g})`, b: '0px', segurar: correr });
+  // A pé — esquerda (ao lado do joystick): TIRO 2 e MIRAR 2
+  botao({ rotulo: 'TIRO', l: `calc(${J} + ${g})`, b: '0px', classe: 'vermelho', segurar: atira, grupo: 'tiro' });
+  botao({ rotulo: 'MIRAR', l: `calc(${J} + ${g})`, b: `calc(${b} + ${g})`, alternar: mira, grupo: 'mira' });
   // Topo à direita (a engrenagem do HUD fica no canto): ARMA, RECAR., PORTA (perto de veículo)
   botao({ rotulo: 'ARMA', r: `calc(${b} + ${g})`, t: '0px', tam: b, toque: () => injetarToque('KeyX') });
   botao({ rotulo: 'RECAR.', r: `calc(2 * (${b} + ${g}))`, t: '0px', tam: b, toque: () => injetarToque('KeyR') });
