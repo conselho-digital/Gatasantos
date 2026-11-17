@@ -8,6 +8,7 @@ import { ARMAS } from './weapons';
 import type { Mover, PresencaJogador } from '../net/clean';
 import { raioCilindro, raioEsfera } from './raycast';
 import { MODELOS, Veiculo } from './vehicle';
+import type { Motor, Som } from './audio';
 
 const ATRASO = 100; // ms de buffer de interpolação
 const MAX_SNAPS = 24;
@@ -62,7 +63,11 @@ export class RemotePlayer {
   credito = 2; // tiros permitidos acumulados (balde de cadência)
   morto = false;
 
-  constructor(private scene: THREE.Scene, readonly info: PresencaJogador) {
+  private motor: Motor | null = null;
+  private som: Som | null = null;
+
+  constructor(private scene: THREE.Scene, readonly info: PresencaJogador, som: Som | null = null) {
+    this.som = som;
     const eq: Equipe = { nome: info.eq.n, c1: info.eq.c1, c2: info.eq.c2 };
     this.p = criarPersonagem(achar(info.pers));
     this.p.raiz.rotation.order = 'YXZ';
@@ -119,7 +124,11 @@ export class RemotePlayer {
       this.guiado = new Veiculo(MODELOS[s.ve - 1], s.vc);
       this.scene.add(this.guiado.grupo);
       this.guiadoKey = chave;
+      this.motor?.parar();
+      this.motor = this.som ? this.som.motor(this.guiado.ehMoto ? 'moto' : 'carro') : null;
     } else if (!dirigindo && this.guiado) {
+      this.motor?.parar();
+      this.motor = null;
       this.guiado.dispose();
       this.guiado = null;
       this.guiadoKey = '';
@@ -131,6 +140,7 @@ export class RemotePlayer {
       const dist = Math.hypot(this.x - g.x, this.z - g.z);
       g.posicionar(this.x, this.z, a.vh + (b.vh - a.vh) * k);
       g.v = dt > 0 ? (dist / dt) * Math.sign(antes || 1) : 0; // só para girar as rodas
+      this.motor?.atualizar(this.x, this.z, Math.min(1, Math.abs(g.v) / g.modelo.vmax), Math.abs(g.v) > 1 ? 0.6 : 0, 0);
       void antes;
       const seat = g.assento(this.seat);
       this.giro = g.h;
@@ -165,6 +175,7 @@ export class RemotePlayer {
   }
 
   dispose(): void {
+    this.motor?.parar();
     this.parado?.dispose();
     this.guiado?.dispose();
     this.naMao?.grupo.removeFromParent();
@@ -188,7 +199,7 @@ export class RemotePlayer {
 /** Todos os jogadores remotos aceitos na sessão. */
 export class Remotos {
   readonly mapa = new Map<string, RemotePlayer>();
-  constructor(private scene: THREE.Scene) {}
+  constructor(private scene: THREE.Scene, private som: Som | null = null) {}
 
   /** Reconcilia com a presença: cria quem chegou e remove quem saiu. */
   sincronizar(lista: PresencaJogador[], aoEntrar: (n: string) => void, aoSair: (n: string) => void): void {
@@ -201,7 +212,7 @@ export class Remotos {
         this.mapa.delete(p.id);
       }
       if (!this.mapa.has(p.id)) {
-        this.mapa.set(p.id, new RemotePlayer(this.scene, p));
+        this.mapa.set(p.id, new RemotePlayer(this.scene, p, this.som));
         if (!atual) aoEntrar(p.nome);
       }
     }

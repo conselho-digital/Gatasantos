@@ -18,6 +18,7 @@ import { ouvirRuido } from './noise';
 import { ARMAS, armaPorId, simularCadencia, tabelaTempoParaMatar, type ArmaId } from './weapons';
 import { Hud } from '../ui/hud';
 import { Conducao } from './driving';
+import { Som, type Controle, type Motor, type TipoTiro } from './audio';
 import { criarControlesToque } from '../ui/touch';
 import { MODELOS } from './vehicle';
 import { abrirGaragem, type EscolhaGaragem } from '../ui/garage';
@@ -113,6 +114,18 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     t.t = 0.06;
   };
 
+  // Áudio (sintetizado por código). Criado dentro do clique de Entrar; `?mudo=1` desliga.
+  let som: Som | null = null;
+  if (params.get('mudo') !== '1') {
+    try {
+      som = new Som();
+      void som.retomar();
+    } catch {
+      som = null; // navegador sem WebAudio: segue mudo
+    }
+  }
+  const tipoTiro = (id: ArmaId): TipoTiro => (id === 'pistola' ? 'pistola' : id === 'fuzilC' ? 'fuzilC' : id === 'fuzilS' ? 'silenciado' : 'fuzil');
+
   // Rede: sessão no Supabase Realtime (sem login; só o nome)
   const maxSessao = Number(params.get('max')) || undefined;
   const online = new Online(
@@ -123,6 +136,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       tracer: desenharTracer,
       receberDano: (v) => combate.danoEmMim(v),
       meuEstado: () => ({ x: pos.x, y: altura, z: pos.z }),
+      som,
     },
   );
 
@@ -140,10 +154,12 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     tracer(de, ate) {
       desenharTracer(de, ate);
       online.enviarTiro(de, ate, combate.arma.silenciada);
+      som?.tiro(tipoTiro(combate.arma.id), de.x, de.z);
     },
     aviso: (m) => hud.feed(m),
     marcador: (cab, morreu) => hud.marcador(cab, morreu),
-    soco: () => anim.soco(),
+    soco: () => { anim.soco(); som?.golpe(pos.x, pos.z); },
+    recarga: () => som?.recarga(pos.x, pos.z),
     renascer() {
       const p = pontoLivre(spawn.x - 8, spawn.x + 8, spawn.z - 8, spawn.z + 8, RAIO + 0.3);
       if (p) { pos.x = p.x; pos.z = p.z; }
@@ -179,6 +195,12 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     }, () => { garagemAberta = false; travarMouse(); });
   };
   let modoAnt = conducao.modo;
+  // sons de veículo ligados ao estado
+  let motorSom: Motor | null = null;
+  let buzinaSom: (Controle & { posicao(x: number, z: number): void }) | null = null;
+  let sireneSom: (Controle & { posicao(x: number, z: number): void }) | null = null;
+  let raspaoSom: (Controle & { atualizar(x: number, z: number, f: number): void }) | null = null;
+  let hAntes = false, tH = 0, sireneAlternou = false, tBat = -1, tRasp = -1;
   /** Informa aos outros onde meu veículo está estacionado (presence). */
   const publicarVeiculo = () => {
     const v = conducao.veiculo;
@@ -232,8 +254,9 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     if (apertou('KeyE') && conducao.dirigindo && conducao.veiculo?.modelo.tipo === 'viatura') conducao.veiculo.luzes = !conducao.veiculo.luzes;
     derrubado = Math.max(0, derrubado - dt);
     if (morto && conducao.modo !== 'a_pe') { conducao.forcarSaida(); }
+    const acelIn = tecla('KeyW') ? 1 : 0;
     const est = conducao.atualizar(dt, {
-      acel: (tecla('KeyW') ? 1 : 0) - (tecla('KeyS') ? 1 : 0),
+      acel: acelIn - (tecla('KeyS') ? 1 : 0),
       dir: (tecla('KeyA') ? 1 : 0) - (tecla('KeyD') ? 1 : 0),
       mao: tecla('Space'),
     }, pos);
@@ -241,6 +264,44 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     if (modoAnt !== 'a_pe' && est.modo === 'a_pe') publicarVeiculo(); // saiu: o veículo fica onde está
     modoAnt = est.modo;
     const emVeic = est.assentado;
+    if (som) {
+      som.ouvinte(pos.x, pos.z, cam.yaw);
+      const v = conducao.veiculo;
+      // motor: parte 0,2 s depois de fechar a porta; para ao sair/guardar (sem vazamento)
+      if (conducao.dirigindo && v && !motorSom) { const m = som.motor(v.ehMoto ? 'moto' : 'carro'); motorSom = m; setTimeout(() => m.crank(), 200); }
+      if (!conducao.dirigindo && motorSom) { motorSom.parar(); motorSom = null; }
+      if (motorSom && v) motorSom.atualizar(v.x, v.z, Math.abs(v.v) / v.modelo.vmax, acelIn, Math.min(1, Math.abs(v.slip) / 6));
+      // buzina (H); na viatura, segurar 0,5 s liga/desliga a sirene
+      const h = tecla('KeyH') && conducao.dirigindo && !!v;
+      if (h && !hAntes && v) {
+        buzinaSom = som.buzina(v.ehMoto ? 'moto' : 'carro', v.x, v.z);
+        tH = 0;
+        sireneAlternou = false;
+        online.enviarBuzina(v.ehMoto ? 1 : 0, v.x, v.z);
+      }
+      if (h && buzinaSom && v) {
+        buzinaSom.posicao(v.x, v.z);
+        tH += dt;
+        if (v.modelo.tipo === 'viatura' && tH >= 0.5 && !sireneAlternou) {
+          sireneAlternou = true;
+          buzinaSom.parar();
+          buzinaSom = null;
+          if (sireneSom) { sireneSom.parar(); sireneSom = null; online.enviarBuzina(6, v.x, v.z, true); }
+          else { sireneSom = som.sirene(v.x, v.z); online.enviarBuzina(2, v.x, v.z, true); }
+        }
+      }
+      if (!h && hAntes) { buzinaSom?.parar(); buzinaSom = null; }
+      hAntes = h;
+      if (sireneSom && (!conducao.dirigindo || !v)) { sireneSom.parar(); sireneSom = null; online.enviarBuzina(6, pos.x, pos.z, true); }
+      else if (sireneSom && v) sireneSom.posicao(v.x, v.z);
+      // batida (> 2,5 m/s soma estalo) e lata raspando
+      const imp = conducao.impactoQuadro;
+      if (imp && v) {
+        if (imp.velocidade > 2.5 && relogio - tBat > 0.25) { tBat = relogio; som.batida(imp.velocidade, v.x, v.z); online.enviarBuzina(5, v.x, v.z); }
+        else if (imp.velocidade > 0.3 && imp.velocidade <= 2.5) { raspaoSom ??= som.raspao(); raspaoSom.atualizar(v.x, v.z, imp.velocidade / 2.5); tRasp = relogio; }
+      }
+      if (raspaoSom && relogio - tRasp > 0.15) { raspaoSom.parar(); raspaoSom = null; }
+    }
     const andarPara = est.andarPara;
     const caido = morto || derrubado > 0;
     const preso = caido || emVeic || !!andarPara || garagemAberta;
@@ -416,6 +477,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       validate: cidade.validate,
       combat: () => combate,
       conducao,
+      som,
       vk: () => ({ modo: conducao.modo, v: conducao.veiculo ? { x: conducao.veiculo.x, z: conducao.veiculo.z, h: conducao.veiculo.h, vel: conducao.veiculo.v, caido: conducao.veiculo.caido } : null }),
       npcs: () => npcs.resumo(),
       npcsObj: npcs,

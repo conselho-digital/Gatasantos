@@ -199,3 +199,28 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Limites: **não testado em celular de verdade** (só emulação); sem minimapa; ARMA troca para a próxima (sem menu de seleção);
   sem botão de microfone (voz é a etapa 10); sem pausa/engrenagem no celular (etapa 11); botão de pular não escala sozinho obstáculos;
   desempenho real (30+ FPS) precisa ser medido num aparelho.
+
+## Rodada: Skills instaladas + Etapa 9 — Áudio (seguindo `audio-design`)
+- **Skills**: o dono perguntou se eu usava as skills — eu **não tinha instalado**. O repositório `conselho-digital/manifestacao` é público: clonado e
+  copiado para `.claude/skills/` (router, threejs-*, performance-optimization, camera-systems, input-systems, game-ui-ux, game-feel, audio-design,
+  physics-tuning, fps-shooter, Blender…) e `.claude/agents/revisor-bugs-seguranca.md`. Daqui para frente: `router` primeiro, depois só as skills da tarefa
+  (aqui: `audio-design`; na revisão final: `performance-optimization`, `fps-shooter`, `game-ui-ux`, `physics-tuning` e o sub agente de segurança).
+- `game/audio.ts` (`Som`, `Motor`): tudo sintetizado por WebAudio, sem arquivos. **Barramentos** `sfx`, `veiculos`, `ui`, `voz` → Master com limitador;
+  `definirVolume(barramento, slider)` usa o slider **ao quadrado** (mudo em 0), nunca dB direto. Sons repetidos variam tom (±1 semitom) e volume (±2 dB).
+  Máx. 10 tiros simultâneos. Volume e lado (pan) pela distância até o ouvinte; alcances (m): tiro 22, silenciado 9, buzina 13, motor 11, sirene 24,
+  batida 18, raspão 12, recarga 8, golpe 7 (o círculo do som no chão ainda não foi desenhado).
+- Sons: tiro (fuzil grave e longo, pistola seca, silenciado só estalo, fuzil C com eco de 3 repetições; longe perde agudos), recarga em 4 cliques
+  (0; 0,42; 0,92; 1,36 s), golpe, pegar item, motor (tom e filtro sobem **contínuos** de 0 a 100% da velocidade, sem marchas; partida sintetizada
+  0,2 s depois de fechar a porta; chiado de pneu pelo deslize), buzina (carro 2 notas graves, moto mais aguda, caminhão), sirene "lamento" 600–1400 Hz,
+  batida (+ estalo de metal acima de 2,5 m/s) e lata raspando (ruído com trepidação de 38 Hz).
+- Controles: **H** buzina (segurar 0,5 s na viatura liga/desliga a sirene; sai sozinha ao sair do veículo). Celular: botão BUZINA ao dirigir.
+  Rede: evento `buz` (carro 0, moto 1, sirene ligada 2, caminhão 3, batida 5, sirene desligada 6; 1 a cada 250 ms); tiros de outros jogadores
+  tocam no lugar deles; motor de veículo remoto idem. `?mudo=1` desliga o áudio.
+- **Medição (skill, passo 8)**: sessão sintética de 40 s (motor 0→90%, 3 rajadas de 10 tiros meus + do outro jogador, buzina, sirene 8 s, batida,
+  recarga) renderizada offline e medida com `ffmpeg ebur128`: ganho 1,0 = −14,3 LUFS / pico −0,8 dBFS (alto demais); **ganho 0,62 = −18,5 LUFS,
+  LRA 3,6 LU, pico −2,8 dBFS** (alvo mobile −18 ±2, pico ≤ −1). 0,62 virou o padrão do Master.
+- **Vazamento**: `__game.som.ativos` (fontes tocando) = 0 depois de tiros e recarga; 3 com motor ligado; 5 com motor + sirene; **volta a 0 ao sair do
+  veículo**. 0 erros de página. AudioContext `running` (criado dentro do clique de Entrar).
+- Limites: **ninguém ouviu ainda** (só medi e contei): peço ao dono para ouvir em fone e alto-falante do celular e dizer se motor/tiros/sirene
+  soam bem; sem música nem ducking (a voz é a etapa 10: o barramento `voz` já existe para ducking); sem menu de volume (etapa 11); passos e
+  pneu só chiam ao derrapar; sons de NPC não existem; iOS exige o toque de Entrar para liberar o áudio (já é assim).

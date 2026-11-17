@@ -129,3 +129,17 @@ export function limparKill(v: unknown): Kill | null {
   const de = limparId(o.de), para = limparId(o.para);
   return de && para ? { de, para, a: num(o.a, 0, 22) | 0 } : null;
 }
+
+export interface Buzina {
+  i: string;
+  k: number; // 0 carro, 1 moto, 2 sirene ligada, 3 caminhão, 5 batida, 6 sirene desligada
+  x: number;
+  z: number;
+}
+
+export function limparBuzina(v: unknown): Buzina | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  const i = limparId(o.i);
+  return i ? { i, k: num(o.k, 0, 6) | 0, x: num(o.x, -LIM, LIM), z: num(o.z, -LIM, LIM) } : null;
+}

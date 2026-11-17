@@ -11,7 +11,7 @@ export interface OuvintesSala {
   evento(nome: string, payload: unknown): void;
 }
 
-export const EVENTOS = ['move', 'tiro', 'dano', 'kill', 'rtc'] as const;
+export const EVENTOS = ['move', 'tiro', 'dano', 'kill', 'rtc', 'buz'] as const;
 
 /**
  * Sala = um canal Realtime `arena:<mapa>` (`-2`, `-3`... quando enche).

@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { Remotos } from './remote';
 import { Sala, MAX_SESSAO } from '../net/sala';
 import { temSupabase } from '../net/supabase';
-import { limparDano, limparKill, limparMover, limparTiro, type Mover, type PresencaJogador } from '../net/clean';
+import { limparBuzina, limparDano, limparKill, limparMover, limparTiro, type Mover, type PresencaJogador } from '../net/clean';
+import type { Som, Controle } from './audio';
 import { plausible } from '../net/plausible';
 import { ARMAS } from './weapons';
 import type { Alvo, Alvos, ContextoTiro } from './combat';
@@ -20,6 +21,7 @@ interface Ganchos {
   /** Dano que chegou e passou na validação. Devolve true se isso me matou. */
   receberDano(valor: number): boolean;
   meuEstado(): { x: number; y: number; z: number };
+  som: Som | null;
 }
 
 /** Liga o jogo ao Supabase Realtime: presença, movimento, tiros, danos e abates. */
@@ -31,11 +33,13 @@ export class Online {
   private acertos = new Map<string, number>(); // id → hora (ms) do meu último acerto
   private ultimoAbate = new Map<string, number>(); // id → hora do último abate contado
   private tMove = 0;
+  private sirenes = new Map<string, Controle & { posicao(x: number, z: number): void }>();
+  private tBuz = 0;
   private a = new THREE.Vector3();
   private b = new THREE.Vector3();
 
   constructor(scene: THREE.Scene, readonly eu: PresencaJogador, private g: Ganchos) {
-    this.remotos = new Remotos(scene);
+    this.remotos = new Remotos(scene, g.som);
   }
 
   get ativo(): boolean {
@@ -64,7 +68,10 @@ export class Online {
       if (m && m.i !== this.eu.id) this.remotos.mapa.get(m.i)?.receber(m);
     } else if (nome === 'tiro') {
       const t = limparTiro(payload);
-      if (t && t.i !== this.eu.id) this.g.tracer(this.a.set(...t.o), this.b.set(...t.e));
+      if (t && t.i !== this.eu.id) {
+        this.g.tracer(this.a.set(...t.o), this.b.set(...t.e));
+        this.g.som?.tiro(t.s ? 'silenciado' : 'fuzil', t.o[0], t.o[2]);
+      }
     } else if (nome === 'dano') {
       const d = limparDano(payload);
       if (!d || d.para !== this.eu.id) return;
@@ -78,6 +85,13 @@ export class Online {
         const quem = this.remotos.mapa.get(d.de)?.info.nome ?? 'alguém';
         this.g.feed(`${quem} derrubou você`);
       }
+    } else if (nome === 'buz') {
+      const b = limparBuzina(payload);
+      if (!b || b.i === this.eu.id || !this.g.som) return;
+      if (b.k === 2) { this.sirenes.get(b.i)?.parar(); this.sirenes.set(b.i, this.g.som.sirene(b.x, b.z)); }
+      else if (b.k === 6) { this.sirenes.get(b.i)?.parar(); this.sirenes.delete(b.i); }
+      else if (b.k === 5) this.g.som.batida(8, b.x, b.z);
+      else { const h = this.g.som.buzina(b.k === 1 ? 'moto' : b.k === 3 ? 'caminhao' : 'carro', b.x, b.z); setTimeout(() => h.parar(), 600); }
     } else if (nome === 'kill') {
       const k = limparKill(payload);
       if (!k) return;
@@ -118,6 +132,14 @@ export class Online {
   async atualizarVeiculo(veh: PresencaJogador['veh']): Promise<void> {
     this.eu.veh = veh;
     await this.sala?.atualizarEu({ ...this.eu });
+  }
+
+  /** Buzina/sirene/batida para os outros (no máx. 1 a cada 250 ms). */
+  enviarBuzina(k: number, x: number, z: number, forcar = false): void {
+    const agora = performance.now();
+    if (!forcar && agora - this.tBuz < 250) return;
+    this.tBuz = agora;
+    this.sala?.enviar('buz', { i: this.eu.id, k, x, z });
   }
 
   enviarTiro(o: THREE.Vector3, e: THREE.Vector3, silenciado: boolean): void {
@@ -163,6 +185,8 @@ export class Online {
   }
 
   async sair(): Promise<void> {
+    this.sirenes.forEach((s) => s.parar());
+    this.sirenes.clear();
     this.remotos.limpar();
     await this.sala?.sair();
     this.sala = null;

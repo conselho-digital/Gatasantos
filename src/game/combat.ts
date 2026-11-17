@@ -51,6 +51,7 @@ export interface Ganchos {
   marcador(cabeca: boolean, morreu: boolean): void;
   soco(): void;
   renascer(): void;
+  recarga?(): void;
 }
 
 const _o = new THREE.Vector3();
@@ -125,6 +126,7 @@ export class Combate {
     if (this.recarga > 0 || this.arma.corpoACorpo || b.pente >= this.arma.pente) return;
     if (b.reserva <= 0) { this.g.aviso('Sem munição'); return; }
     this.recarga = RECARGA;
+    this.g.recarga?.();
   }
 
   atualizar(dt: number, e: Entrada): void {

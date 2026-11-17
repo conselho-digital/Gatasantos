@@ -176,6 +176,7 @@ export function criarControlesToque(): ControlesToque {
   botao({ rotulo: 'ACEL.', x: '24px', y: '24px', tam: 110, classe: 'vermelho', segurar: tecla('KeyW'), visivel: 'dirigindo' });
   botao({ rotulo: 'FREIO', x: '150px', y: '24px', tam: 84, segurar: tecla('KeyS'), visivel: 'dirigindo' });
   botao({ rotulo: 'MÃO', x: '24px', y: '150px', tam: 72, segurar: tecla('Space'), visivel: 'dirigindo' });
+  botao({ rotulo: 'BUZINA', x: '240px', y: '24px', tam: 72, segurar: tecla('KeyH'), visivel: 'dirigindo' });
   botao({ rotulo: 'LUZ', x: '110px', y: '150px', tam: 66, toque: () => injetarToque('KeyE'), visivel: 'viatura' });
   botao({ rotulo: 'SAIR', x: '110px', y: '260px', tam: 76, toque: () => injetarToque('KeyF'), visivel: 'dirigindo' });
 

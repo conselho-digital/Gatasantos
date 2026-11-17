@@ -40,6 +40,8 @@ export class Conducao {
   private de = new THREE.Vector3();
   private para = new THREE.Vector3();
   private portaLado: -1 | 1 = -1;
+  /** Impacto contra parede neste quadro (para o som de batida/raspão). */
+  impactoQuadro: { velocidade: number } | null = null;
   readonly estado: EstadoConducao = { modo: 'a_pe', assentado: false, corpo: { x: 0, y: 0, z: 0, giro: 0 }, andarPara: null, clip: null, kmh: 0 };
 
   constructor(private scene: THREE.Scene, private g: Ganchos, private npcs: Pedestres) {}
@@ -114,11 +116,13 @@ export class Conducao {
     e.andarPara = null;
     e.clip = null;
     e.kmh = v ? Math.abs(v.v) * 3.6 : 0;
+    this.impactoQuadro = null;
     if (!v) return e;
     this.t += dt;
 
     const impacto = v.atualizar(dt, this.modo === 'dirigindo' ? ent : { acel: 0, dir: 0, mao: false }, this.modo === 'dirigindo');
     e.kmh = Math.abs(v.v) * 3.6;
+    this.impactoQuadro = impacto;
     const clip = v.ehMoto ? 'ride_bike' : 'sit_car';
 
     // atropelo (> 4,5 m/s): pedestres no círculo da frente
