@@ -138,6 +138,11 @@ export class Animador {
   private aplicada: Pose = new Float32Array(N);
   private ossos: THREE.Object3D[];
   private v = new THREE.Vector3();
+  /** Braços com arma de duas mãos (0..1, suavizado) e inclinação da mira (rad, + = olhando para baixo). */
+  armado = false;
+  mira = 0;
+  private armaW = 0;
+  private socoT = 0;
 
   constructor(private p: Personagem) {
     this.ossos = OSSOS.map((n) => p.osso[n]);
@@ -156,6 +161,11 @@ export class Animador {
     if (!continua && LOCOMOCAO.has(clip)) this.fase = 0;
   }
 
+  /** Dispara o golpe de braço (soco) de ~0,3 s. */
+  soco(): void {
+    this.socoT = 0.3;
+  }
+
   /** Avança `dt` segundos. `noChao` = encostar o pé mais baixo no chão. */
   atualizar(dt: number, _vel: number, noChao = true): void {
     void _vel;
@@ -168,6 +178,7 @@ export class Animador {
     this.fade = Math.min(1, this.fade + dt / this.fadeDur);
     const w = this.fade * this.fade * (3 - 2 * this.fade);
     for (let i = 0; i < N; i++) this.aplicada[i] = this.anterior[i] * (1 - w) + this.atual[i] * w;
+    this.sobrepor(dt);
     for (let b = 0; b < this.ossos.length; b++) {
       this.ossos[b].rotation.set(this.aplicada[b * 3], this.aplicada[b * 3 + 1], this.aplicada[b * 3 + 2]);
     }
@@ -178,6 +189,31 @@ export class Animador {
       this.p.raiz.updateMatrixWorld(true);
       const m = Math.min(this.pe('L_Foot'), this.pe('R_Foot'));
       pelvis.position.y = PELVIS_BASE - m;
+    }
+  }
+
+  /** Sobrepõe braços/tronco: arma de duas mãos e soco (por cima do clipe de pernas). */
+  private sobrepor(dt: number): void {
+    const A = this.aplicada;
+    const set = (o: Osso, x: number, y: number, z: number, w: number) => {
+      const i = IDX[o] * 3;
+      A[i] += (x - A[i]) * w; A[i + 1] += (y - A[i + 1]) * w; A[i + 2] += (z - A[i + 2]) * w;
+    };
+    this.armaW += ((this.armado ? 1 : 0) - this.armaW) * Math.min(1, dt * 12);
+    if (this.armaW > 0.001) {
+      const w = this.armaW, p = this.mira;
+      set('R_UpperArm', -1.45 + p, 0.1, -0.12, w);
+      set('R_ForeArm', -0.3, 0, 0, w);
+      set('L_UpperArm', -1.3 + p, -0.55, 0.25, w);
+      set('L_ForeArm', -0.5, 0, 0, w);
+      set('Spine', 0.05, A[IDX.Spine * 3 + 1] * 0.3, 0, w);
+    }
+    if (this.socoT > 0) {
+      this.socoT = Math.max(0, this.socoT - dt);
+      const k = Math.sin(Math.PI * (1 - this.socoT / 0.3)); // sobe e volta
+      set('R_UpperArm', -1.55, 0, -0.1, k);
+      set('R_ForeArm', -0.1, 0, 0, k);
+      set('Spine', 0.1, -0.5, 0, k);
     }
   }
 

@@ -78,3 +78,31 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Fotos: `dev/face-shots.html` (câmera 20° de FOV, 1,25 m) gera `public/faces/<id>.webp` (~2 KB cada, 10 arquivos).
 - Medido: menu → jogo ok no navegador (nome, equipe e personagem gravados), 0 erros de página.
 - Limites: sem login; equipes são locais (tabela `teams` depois); sem rosto de foto real; menu sem teste em celular real.
+
+## Rodada: Etapa 7 (combate solo) + pedestres — etapa 6 (multiplayer) PULADA
+- Decisão do dono: **pular a etapa 6** (multiplayer/Supabase Realtime) e **colocar NPCs já**. Combate funciona em modo solo;
+  dano pela rede com `plausible` e abates/ranking ficam para quando o multiplayer existir.
+- Personagem agora é **1 `SkinnedMesh`** (peças presas a 1 osso, cor por vértice, `MeshBasicMaterial`): 1 chamada por boneco
+  (+1 da sombra). `frustumCulled=false` por enquanto (TODO: esfera da pose + 1,2 m).
+- `weapons.ts`: Punho, Pistola, Fuzil A/B/C, Fuzil silenciado (dano 20/18/22/16, gap 0,11/0,09/0,12/0,10, pente 30, reserva 120;
+  pistola 15, gap 0,4, 12/60). Cabeça × 2. Recarga 1,6 s. Dispersão em disco 0,003 mirando / 0,012 sem mirar. Arma levantada 0,6 s.
+- `combat.ts`: hitscan da câmera até o ponto de mira, depois do cano até esse ponto (cobertura bloqueia). Cadência em relógio
+  fixo (`cd = gap + cd`, até 3 tiros/quadro). Vida 400, colete 100 (absorve 60%), morrer → renasce em 3,5 s com 60 s de proteção.
+  Munição ainda sem limite de 15 min (guardado por conta vem com login). Armas brancas ainda não (só punho).
+- `npcs.ts`: 26 pedestres (18 no celular), locais. Andam 2,1 m/s até ponto livre a 8–30 m, esperam 2–7 s; barulho de tiro
+  (35 m; 10 m silenciado) faz fugir (6,2 m/s) para fora da linha de visão e esconder agachado 10–18 s; vida 60; morrem
+  deitados, ficam 9 s e outro nasce a ≥ 40 m; param além de 75 m e somem além de 110 m. 8 nascem perto (10–45 m).
+- `raycast.ts` (caixa/cilindro/esfera), `noise.ts`, `gunmodel.ts`, `ui/hud.ts` (vida, colete, arma/munição, mira, marcador, feed, FPS).
+- Controles: clique atira, botão direito mira (FOV × 0,7, sensibilidade × tan), R recarrega, 1–6 / X / roda trocam arma.
+- Medido (swiftshader): cena com 26 NPCs = **59 chamadas, 28,9 mil triângulos**. 0 erros de página.
+- Cadência (simulação, 10 s): Fuzil A 91 (esperado 90,9), B 112 (111,1), silenciado 101 (100) em 15/20/30/60/144 FPS: ±1 ok.
+- Tempo para matar (sem colete; vida 60 / vida 400): Fuzil A 3 tiros 0,22 s / 20 tiros 2,09 s; B 4 / 0,27 s e 23 / 1,98 s;
+  C 3 / 0,24 s e 19 / 2,16 s; silenciado 4 / 0,30 s e 25 / 2,40 s; Pistola 4 / 1,2 s e 27 / 10,4 s; Punho 5 / 2 s e 34 / 16,5 s.
+  `__game.tabelaTTK(colete)` imprime a tabela completa.
+- Testes no navegador (relógio do jogo, `__game.relogio()`; o navegador de teste roda em câmera lenta): tiro mata NPC a 20 m;
+  parede entre atirador e NPC bloqueia (vida 60); controle sem parede mata; silenciado a 12 m não assusta, fuzil A assusta e
+  o NPC se esconde; recarga automática 0/120 → 30/90 em 1,6 s; morte 3,5 s → renasce com proteção 59 s e dano ignorado;
+  NPC morto some após 9 s e nasce a 72 m.
+- Limites: pitch inicial 0,28 mira ~5 m à frente no chão (o jogador ajusta com o mouse; avaliar pitch menor);
+  sem clipes de luta/queda/reação (NPC cai por rotação simples e foge ao ser atingido); com arma na mão as pernas andam para a
+  frente mesmo ao andar de lado; braços da arma por pose fixa (sem IK); sem som (etapa 9); celular sem botões (etapa 13).

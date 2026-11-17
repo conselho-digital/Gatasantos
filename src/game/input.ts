@@ -41,3 +41,43 @@ export function consumirMouse(): { dx: number; dy: number } {
   dy = 0;
   return r;
 }
+
+// Botões do mouse (só contam com o mouse preso), roda e teclas de um toque.
+const botoes = new Set<number>();
+let roda = 0;
+const toques = new Set<string>();
+
+addEventListener('mousedown', (e) => { if (preso) botoes.add(e.button); });
+addEventListener('mouseup', (e) => botoes.delete(e.button));
+addEventListener('contextmenu', (e) => e.preventDefault());
+addEventListener('wheel', (e) => { if (preso) roda += Math.sign(e.deltaY); }, { passive: true });
+addEventListener('keydown', (e) => { if (!e.repeat) toques.add(e.code); });
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) botoes.clear(); });
+
+/** 0 = esquerdo (atirar), 2 = direito (mirar). */
+export function botaoMouse(b: 0 | 2): boolean {
+  return botoes.has(b);
+}
+
+/** Passos de roda desde a última chamada (+1 = próxima arma). */
+export function consumirRoda(): number {
+  const r = roda;
+  roda = 0;
+  return r;
+}
+
+/** Verdadeiro uma vez por aperto da tecla. */
+export function apertou(codigo: string): boolean {
+  return toques.delete(codigo);
+}
+
+/** Descarta os apertos acumulados (para o 1º quadro). */
+export function limparToques(): void {
+  toques.clear();
+}
+
+/** Só para testes no dev: simula botão do mouse sem mouse preso. */
+export function forcarBotao(b: number, valor: boolean): void {
+  if (valor) botoes.add(b);
+  else botoes.delete(b);
+}

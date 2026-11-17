@@ -1,13 +1,19 @@
 import * as THREE from 'three';
 import { criarCena } from './scene';
 import { criarCidade, LIMITE } from './city';
-import { COLLIDERS, empurrarCirculo } from './collision';
-import { consumirMouse, eixoMovimento, iniciarMouse, tecla } from './input';
+import { COLLIDERS, empurrarCirculo, pontoLivre } from './collision';
+import { apertou, botaoMouse, forcarBotao, consumirMouse, consumirRoda, eixoMovimento, iniciarMouse, limparToques, tecla } from './input';
 import { criarPersonagem } from './character';
 import { achar, type Equipe } from './characters';
 import { criarAnelEquipe } from './teams';
 import { Animador, medirPasso, TIME_SCALE, VEL_JOGO, type Clip } from './anim';
 import { atualizarCamera, distanciaMinimaDeCaixas, novoEstadoCamera, posicaoDesejada } from './camera';
+import { Combate, COLETE_MAX, VIDA_MAX } from './combat';
+import { criarModeloArma, type ArmaNaMao } from './gunmodel';
+import { Pedestres } from './npcs';
+import { ouvirRuido } from './noise';
+import { ARMAS, armaPorId, simularCadencia, tabelaTempoParaMatar, type ArmaId } from './weapons';
+import { Hud } from '../ui/hud';
 
 /** Escolhas feitas no menu inicial. */
 export interface ConfigJogo {
@@ -19,9 +25,19 @@ export interface ConfigJogo {
   travarMouse: boolean;
 }
 
+const FOV = 60;
+const FOV_MIRANDO = FOV * 0.7;
+const SENS = 0.6; // padrão 0,6x
+const RAD_POR_PX = 0.004;
+const RAIO = 0.4;
+const GRAVIDADE = 16;
+const PULO = 5.5;
+const TECLAS_ARMA: Record<string, ArmaId> = { Digit1: 'punho', Digit2: 'pistola', Digit3: 'fuzilA', Digit4: 'fuzilB', Digit5: 'fuzilC', Digit6: 'fuzilS' };
+
 /** Monta o mapa e inicia o laço. Só roda depois do "Entrar" (nada é montado antes). */
 export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   const { renderer, scene, camera } = criarCena();
+  camera.fov = FOV;
   iniciarMouse(renderer.domElement);
   if (cfg.travarMouse) renderer.domElement.requestPointerLock?.();
 
@@ -29,20 +45,16 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   scene.add(cidade.grupo);
 
   const boneco = criarPersonagem(achar(cfg.personagem));
+  boneco.raiz.rotation.order = 'YXZ';
   boneco.raiz.add(criarAnelEquipe(cfg.equipe));
   scene.add(boneco.raiz);
   const anim = new Animador(boneco);
 
-  const GRAVIDADE = 16;
-  const PULO = 5.5;
   let altura = 0;
   let vy = 0;
   let clipForcado: Clip | null = null;
   let pouso = 0; // tempo restante do clipe 'land'
 
-  const RAIO = 0.4;
-  const SENS = 0.6; // padrão 0,6x
-  const RAD_POR_PX = 0.004;
   const pos = { x: 0, z: 0 };
   let giro = 0; // direção do corpo
   const cam = novoEstadoCamera();
@@ -50,66 +62,186 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   pos.x = px || 0;
   pos.z = pz || 0;
   empurrarCirculo(pos.x, pos.z, RAIO, pos);
+  const spawn = { x: pos.x, z: pos.z };
+
+  // Pedestres: 26 no PC, 18 no celular (locais, nada vai pela rede)
+  const grosso = matchMedia('(pointer: coarse)').matches;
+  const npcs = new Pedestres(scene, grosso ? 18 : 26, pos.x, pos.z);
+  ouvirRuido((x, z, raio) => npcs.assustar(x, z, raio));
+
+  // HUD
+  const hud = new Hud();
+  hud.feed(`Bem-vindo, ${cfg.nome}!`);
+
+  // Tiros: traçadores curtos
+  const tracers: { linha: THREE.Line; t: number }[] = [];
+  for (let i = 0; i < 8; i++) {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+    const linha = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.9 }));
+    linha.visible = false;
+    linha.frustumCulled = false;
+    scene.add(linha);
+    tracers.push({ linha, t: 0 });
+  }
+  let proxTracer = 0;
+
+  const combate = new Combate(npcs, {
+    tracer(de, ate) {
+      const t = tracers[proxTracer++ % tracers.length];
+      const p = t.linha.geometry.attributes.position as THREE.BufferAttribute;
+      p.setXYZ(0, de.x, de.y, de.z);
+      p.setXYZ(1, ate.x, ate.y, ate.z);
+      p.needsUpdate = true;
+      t.linha.visible = true;
+      t.t = 0.06;
+    },
+    aviso: (m) => hud.feed(m),
+    marcador: (cab, morreu) => hud.marcador(cab, morreu),
+    soco: () => anim.soco(),
+    renascer() {
+      const p = pontoLivre(spawn.x - 8, spawn.x + 8, spawn.z - 8, spawn.z + 8, RAIO + 0.3);
+      if (p) { pos.x = p.x; pos.z = p.z; }
+      altura = 0; vy = 0;
+    },
+  });
+
+  // Arma na mão (modelo por código preso à mão direita)
+  let naMao: ArmaNaMao | null = null;
+  let armaMostrada: ArmaId | null = null;
+  const trocarModelo = () => {
+    if (armaMostrada === combate.arma.id) return;
+    if (naMao) naMao.grupo.removeFromParent();
+    naMao = criarModeloArma(combate.arma);
+    if (naMao) boneco.osso.R_Hand.add(naMao.grupo);
+    armaMostrada = combate.arma.id;
+  };
 
   const camFixa = params.get('cam')?.split(',').map(Number);
   const timer = new THREE.Timer();
   const tmp = { x: 0, z: 0 };
   let primeira = true;
   let gAntes = false;
+  let mirandoSuave = 0;
+  let fpsAcum = 0, fpsN = 0, fpsT = 0;
+  const muzzle = new THREE.Vector3();
+
+  let relogio = 0; // tempo de jogo (s), só para testes
 
   function atualizar(dt: number) {
+    relogio += dt;
+    const morto = combate.morto > 0;
     const m = consumirMouse();
-    cam.yaw -= m.dx * RAD_POR_PX * SENS;
-    cam.pitch = THREE.MathUtils.clamp(cam.pitch - m.dy * RAD_POR_PX * SENS, -0.5934, 1.2043);
+    const mirando = botaoMouse(2) && !combate.arma.corpoACorpo && !morto;
+    // sensibilidade ao mirar: × tan(fov atual/2) / tan(fov normal/2)
+    const fator = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+    cam.yaw -= m.dx * RAD_POR_PX * SENS * fator;
+    cam.pitch = THREE.MathUtils.clamp(cam.pitch - m.dy * RAD_POR_PX * SENS * fator, -0.5934, 1.2043);
     const g = tecla('KeyG');
     if (g && !gAntes) cam.perto = !cam.perto;
     gAntes = g;
 
-    const { x, y } = eixoMovimento();
+    // Armas por tecla
+    let trocarPara: ArmaId | null = null;
+    for (const [codigo, id] of Object.entries(TECLAS_ARMA)) if (apertou(codigo)) trocarPara = id;
+    if (apertou('KeyX')) trocarPara = ARMAS[(ARMAS.findIndex((a) => a.id === combate.arma.id) + 1) % ARMAS.length].id;
+    const recarregar = apertou('KeyR');
+
+    const { x, y } = morto ? { x: 0, y: 0 } : eixoMovimento();
     const agachado = tecla('KeyC') || tecla('ControlLeft');
-    const correndo = tecla('ShiftLeft') && !agachado;
-    const vel = agachado ? VEL_JOGO.crouch_walk! : correndo ? VEL_JOGO.run! : VEL_JOGO.walk!; // andar devagar por padrão
+    const correndo = tecla('ShiftLeft') && !agachado && !mirando;
+    const vel = agachado ? VEL_JOGO.crouch_walk! : correndo ? VEL_JOGO.run! : VEL_JOGO.walk!;
     const noChao = altura <= 0 && vy <= 0;
-    if (noChao && tecla('Space') && !agachado) { vy = PULO; }
+    if (noChao && tecla('Space') && !agachado && !morto) vy = PULO;
     if (vy > 0 || altura > 0) {
       vy -= GRAVIDADE * dt;
       altura += vy * dt;
       if (altura <= 0) { if (vy < -3) pouso = 0.18; altura = 0; vy = 0; }
     }
     pouso = Math.max(0, pouso - dt);
+
+    let dirx = 0, dirz = 0;
     if (x || y) {
       const n = Math.hypot(x, y);
       const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw);
-      const dirx = (fx * y - fz * x) / n, dirz = (fz * y + fx * x) / n;
+      dirx = (fx * y - fz * x) / n;
+      dirz = (fz * y + fx * x) / n;
       empurrarCirculo(pos.x + dirx * vel * dt, pos.z + dirz * vel * dt, RAIO, tmp);
       pos.x = Math.max(-LIMITE.halfX + RAIO, Math.min(LIMITE.halfX - RAIO, tmp.x));
       pos.z = Math.max(-LIMITE.halfZ + RAIO, Math.min(LIMITE.halfZ - RAIO, tmp.z));
-      // gira o corpo suavemente para a direção do movimento
-      const alvo = Math.atan2(dirx, dirz);
-      let d = alvo - giro;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      giro += d * (1 - Math.exp(-dt * 14));
     }
-    boneco.raiz.position.set(pos.x, altura, pos.z);
-    boneco.raiz.rotation.y = giro;
-    const mexe = !!(x || y);
-    let clip: Clip;
-    if (altura > 0) clip = vy > 0 ? 'jump' : 'fall';
-    else if (pouso > 0) clip = 'land';
-    else if (mexe) clip = agachado ? 'crouch_walk' : correndo ? 'run' : 'walk';
-    else clip = agachado ? 'crouch_idle' : 'idle';
-    if (clipForcado) clip = clipForcado; // só dev: inspeção
-    anim.tocar(clip);
-    anim.atualizar(dt, vel, altura <= 0);
 
+    // Câmera (FOV × 0,7 ao mirar, com transição suave)
+    mirandoSuave += ((mirando ? 1 : 0) - mirandoSuave) * Math.min(1, dt * 12);
+    camera.fov = FOV + (FOV_MIRANDO - FOV) * mirandoSuave;
     if (camFixa && camFixa.length >= 6) {
       camera.position.set(camFixa[0], camFixa[1], camFixa[2]);
       camera.lookAt(camFixa[3], camFixa[4], camFixa[5]);
     } else {
-      atualizarCamera(camera, pos.x, 0, pos.z, cam, dt, false, primeira);
-      primeira = false;
+      atualizarCamera(camera, pos.x, altura, pos.z, cam, dt, mirando, primeira);
     }
+    primeira = false;
+
+    // Corpo: com a arma levantada ou mirando olha para onde a câmera olha
+    const armado = !combate.arma.corpoACorpo;
+    const olhando = armado && (mirando || combate.levantada > 0) && !morto;
+    const alvoGiro = olhando ? cam.yaw : x || y ? Math.atan2(dirx, dirz) : giro;
+    let d = alvoGiro - giro;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    if (olhando || x || y) giro += d * (1 - Math.exp(-dt * (olhando ? 22 : 14)));
+
+    boneco.raiz.position.set(pos.x, altura, pos.z);
+    boneco.raiz.rotation.y = giro;
+    boneco.raiz.rotation.x = morto ? -Math.PI / 2 : 0;
+    if (morto) boneco.raiz.position.y += 0.12;
+
+    const mexe = !!(x || y);
+    let clip: Clip;
+    if (morto) clip = 'idle';
+    else if (altura > 0) clip = vy > 0 ? 'jump' : 'fall';
+    else if (pouso > 0) clip = 'land';
+    else if (mexe) clip = agachado ? 'crouch_walk' : correndo ? 'run' : 'walk';
+    else clip = agachado ? 'crouch_idle' : 'idle';
+    if (clipForcado) clip = clipForcado; // só dev: inspeção
+    trocarModelo();
+    anim.armado = armado && olhando;
+    anim.mira = cam.pitch;
+    anim.tocar(clip);
+    anim.atualizar(dt, vel, altura <= 0 && !morto);
+
+    // Combate (usa a câmera e o cano já atualizados)
+    boneco.raiz.updateMatrixWorld(true);
+    if (naMao) naMao.cano.getWorldPosition(muzzle);
+    combate.atualizar(dt, {
+      segurar: botaoMouse(0),
+      clique: botaoMouse(0) && !cliqueAntes,
+      mirando,
+      recarregar,
+      trocarPara,
+      roda: consumirRoda(),
+      camera,
+      muzzle: naMao ? muzzle : null,
+      px: pos.x,
+      pz: pos.z,
+      yaw: giro,
+    });
+    cliqueAntes = botaoMouse(0);
+
+    // Pedestres, traçadores, HUD
+    npcs.atualizar(dt, pos.x, pos.z);
+    for (const t of tracers) {
+      if (!t.linha.visible) continue;
+      t.t -= dt;
+      if (t.t <= 0) t.linha.visible = false;
+    }
+    hud.barras(combate.vida, combate.colete);
+    hud.armaMunicao(combate.arma.nome, combate.balas.pente, combate.balas.reserva, combate.recarregando, combate.arma.corpoACorpo);
+    hud.mirando(mirando);
+    hud.texto(morto ? `Você morreu — renasce em ${combate.morto.toFixed(1)} s` : combate.protecao > 0 ? '' : '');
+    fpsAcum += dt; fpsN++; fpsT += dt;
+    if (fpsT >= 0.5) { hud.contadorFps(fpsN / fpsAcum); fpsAcum = 0; fpsN = 0; fpsT = 0; }
   }
+  let cliqueAntes = false;
+  limparToques();
 
   renderer.setAnimationLoop((agora: number) => {
     timer.update(agora);
@@ -121,12 +253,23 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   if (import.meta.env.DEV) {
     (window as unknown as { __game: unknown }).__game = {
       camera, scene, renderer,
-      player: () => ({ ...pos, giro }),
+      ready: () => true,
+      relogio: () => relogio,
+      player: () => ({ ...pos, giro, altura }),
       teleport: (x: number, z: number) => { pos.x = x; pos.z = z; },
       setYaw: (a: number) => { cam.yaw = a; },
       look: cam,
       colliders: COLLIDERS,
       validate: cidade.validate,
+      combat: () => combate,
+      npcs: () => npcs.resumo(),
+      npcsObj: npcs,
+      mouse: forcarBotao,
+      remotes: () => [],
+      pickups: () => [],
+      tabelaTTK: (colete = 0) => tabelaTempoParaMatar([60, VIDA_MAX], colete),
+      cadencia: (id: ArmaId, fps: number, s = 10) => ({ tiros: simularCadencia(armaPorId(id).gap, fps, s), esperado: s / armaPorId(id).gap }),
+      coleteMax: COLETE_MAX,
       /** Mede a distância câmera–caixa em 16 giros x 4 inclinações (64 posições). */
       camTeste: (x: number, z: number) => {
         pos.x = x; pos.z = z;

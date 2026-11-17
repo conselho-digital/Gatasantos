@@ -51,3 +51,15 @@ export function empurrarCirculo(x: number, z: number, raio: number, out = { x: 0
 export function dentroDeCaixa(x: number, z: number, raio = 0): boolean {
   return COLLIDERS.some((b) => x > b.minX - raio && x < b.maxX + raio && z > b.minZ - raio && z < b.maxZ + raio);
 }
+
+/** Sorteia um ponto livre (fora de prédios, dentro dos limites). `rnd` devolve 0..1. */
+export function pontoLivre(
+  minX: number, maxX: number, minZ: number, maxZ: number,
+  raio = 0.6, rnd: () => number = Math.random,
+): { x: number; z: number } | null {
+  for (let i = 0; i < 40; i++) {
+    const x = minX + rnd() * (maxX - minX), z = minZ + rnd() * (maxZ - minZ);
+    if (!dentroDeCaixa(x, z, raio)) return { x, z };
+  }
+  return null;
+}
