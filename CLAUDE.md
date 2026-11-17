@@ -240,3 +240,23 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
   (8,38 → 8,38); dano na pausa ignorado (vida 400); B vê A trocar para Oficial / Vermelha-branca; configurações salvas; voltar ao jogo retoma; 0 erros.
 - **Não feito (precisam de login/identidade, que o dono dispensou):** loja e preços, inventário por conta, admin (gerenciar equipes/preços/outdoor),
   ranking global e compras (`purchases`). O ranking da pausa é só da sessão. Equipes são fixas no código (sem a tabela `teams`).
+
+## Rodada: Revisão do mobile (pedido do dono) — UI responsiva, carros, mira
+Problemas relatados no celular: botões em tamanhos ruins e fora da tela, menus que não cabiam, **menu de carros (garagem) sem como fechar**, cabeça do boneco
+para fora do carro, mira em "segurar" e câmera com o arrasto vertical ao contrário.
+- **Controles de toque responsivos** (`ui/touch.ts`): tamanhos por altura da tela (`--b: clamp(44px,13vh,68px)`, `--B` = 1,55 b, joystick `clamp(104px,36vh,150px)`),
+  tudo posicionado em múltiplos de `--b`; antes havia px fixos (o botão GARAGEM ficava a 388 px do chão, fora de telas de 360 px). GARAGEM saiu do HUD
+  (fica na pausa). Linha do topo à direita: ARMA, RECAR., PORTA e ⚙. HUD do modo toque também em `clamp()` (`ui/hud.ts`).
+- **Menus que cabem em paisagem** (`@media (orientation:landscape) and (max-height:560px)` e `≤380px`): menu inicial em 2 colunas; pausa e garagem com cartão de
+  altura máxima `100dvh − 24px`, cabeçalho com **✕ sempre visível**, abas roláveis, painel com rolagem interna e rodapé fixo; garagem em 2 colunas (prévia | opções).
+  A garagem só tinha o botão Fechar no fim de um cartão alto: agora tem ✕ no topo (e foco em "Chamar" ao abrir).
+- **Teste em 6 tamanhos** (568x320, 667x375, 740x360, 812x375, 844x390, 932x430; toque): todos os controles dentro da tela e **sem sobreposição** nos 3 modos
+  (a pé, perto do carro, dirigindo), menor botão 44–48 px; botão Entrar do menu visível sem rolar; pausa e garagem cabem, ✕ e "Voltar ao jogo"/"Chamar" dentro
+  da tela, e **fecham por toque no ✕**. Script: ver `ui1.cjs` descrito aqui (cenário reproduzível no CLAUDE.md, não no repositório).
+- **Carros**: o topo da cabeça sentado era 1,64 m + banco 0,18 contra teto de 1,3 m. Agora carro de ~1,5 m (chassi 0,15–0,8, colunas finas, teto 1,47 m), **vidros
+  translúcidos** em malha própria (+1 chamada por carro) para o motorista aparecer dentro, banco do carro afundado 0,22 m. Medido: **cabeça a 1,40 m, teto a 1,50 m**
+  (Gol, Buffalo, Opala e Viatura). Moto: piloto fica em cima (1,81 m), como deve.
+- **Mira no celular é alternar**: um toque liga, outro desliga; os 2 botões MIRAR ficam ligados entre si; desliga sozinha ao dirigir ou com arma de mão.
+  Testado: toque → FOV 60→42 e continua mirando com o dedo solto; 2º toque → 60; botão da esquerda também alterna e liga os dois.
+- **Arrasto vertical invertido (celular e PC)**: arrastar/mover para baixo = olhar para baixo (`pitch + dy`). Testado: arrastar 70 px para baixo pitch 0,28 → 0,52; 100 px para cima → 0,18.
+- Limites: testado só em emulação (sem aparelho real); em retrato aparece "Gire o celular"; botões do HUD de toque em < 44 px não existem (mínimo do `clamp`).

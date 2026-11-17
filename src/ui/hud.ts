@@ -24,13 +24,17 @@ const CSS = `
 .gh-placar table{width:100%;border-collapse:collapse}.gh-placar td,.gh-placar th{padding:4px 8px;text-align:left}.gh-placar .eu{color:#ffd400}
 .gh-vel{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);font:700 34px system-ui}
 .gh-dica{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);background:#000a;border-radius:10px;padding:6px 14px}
-.gh.toque .gh-bar{bottom:auto;top:64px;width:min(190px,28vw)}
-.gh.toque .gh-arma{right:auto;bottom:auto;left:max(12px,env(safe-area-inset-left));top:96px;text-align:left;font-size:20px}
-.gh.toque .gh-feed{top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:50vw;font-size:16px}
-.gh.toque .gh-vel{bottom:auto;top:16px;font-size:28px}
-.gh.toque .gh-dica{display:none}
 .gh-eng{position:absolute;right:max(12px,env(safe-area-inset-right));top:48px;width:52px;height:52px;border-radius:50%;border:2px solid #fff6;background:#1b2535b3;color:#fff;font-size:26px;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.gh.toque .gh-eng{top:max(12px,env(safe-area-inset-top));right:max(80px,env(safe-area-inset-right))}
+.gh.toque{--b:clamp(44px,13vh,68px);--mt:max(8px,env(safe-area-inset-top));font-size:clamp(13px,3.6vh,17px)}
+.gh.toque .gh-bar{bottom:auto;top:var(--mt);width:clamp(110px,24vw,190px)}
+.gh.toque .gh-barra{height:clamp(9px,2.6vh,13px)}
+.gh.toque .gh-arma{right:auto;bottom:auto;left:max(12px,env(safe-area-inset-left));top:calc(var(--mt) + clamp(34px,10vh,48px));text-align:left;font-size:clamp(14px,3.8vh,19px)}
+.gh.toque .gh-arma small{font-size:clamp(13px,3.4vh,17px)}
+.gh.toque .gh-feed{top:calc(var(--mt) + clamp(26px,8vh,38px));left:50%;transform:translateX(-50%);max-width:46vw;font-size:clamp(12px,3.3vh,15px);text-align:center}
+.gh.toque .gh-vel{bottom:auto;top:var(--mt);font-size:clamp(20px,6vh,28px)}
+.gh.toque .gh-dica{display:none}
+.gh.toque .gh-eng{top:var(--mt);right:max(10px,env(safe-area-inset-right));width:var(--b);height:var(--b);font-size:clamp(20px,6vh,28px)}
+.gh.toque .gh-fps{top:auto;bottom:max(6px,env(safe-area-inset-bottom));left:50%;right:auto;transform:translateX(-50%);font-size:12px;opacity:.6}
 .gh-fps{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:18px;opacity:.8}
 `;
 

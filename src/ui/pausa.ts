@@ -7,7 +7,13 @@ import { abrirSelecaoPersonagem, rosto } from './selecao';
 const CSS = `
 .gp{position:fixed;inset:0;z-index:6;background:#0b0f14ee;color:#eef2f7;font:18px/1.35 system-ui,sans-serif;display:flex;overflow:auto;
  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-.gp-card{margin:auto;width:min(620px,100%);background:#141b26;border:1px solid #2a3547;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.gp-card{margin:auto;width:min(620px,100%);max-height:calc(100dvh - 24px);background:#141b26;border:1px solid #2a3547;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.gp-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gp-x{width:48px;height:48px;border:0;border-radius:50%;background:#334155;color:#fff;font-size:22px;cursor:pointer;flex:0 0 auto}
+.gp-abas{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none}.gp-abas::-webkit-scrollbar{display:none}
+.gp-aba{flex:0 0 auto!important;white-space:nowrap}
+.gp-painel{flex:1 1 auto;overflow-y:auto;min-height:0}
+@media (orientation:landscape) and (max-height:560px){.gp{font-size:16px}.gp-card{padding:8px 12px;gap:6px}.gp h2{font-size:20px}.gp-aba,.gp-b{min-height:42px;padding:4px 10px}.gp-voltar,.gp-sair{min-height:44px;font-size:17px}.gp-aviso{display:none}.gp input[type=range]{height:26px}}
 .gp h2{margin:0;font-size:24px}
 .gp-abas{display:flex;gap:6px;flex-wrap:wrap}
 .gp-aba{flex:1 1 auto;min-height:48px;padding:6px 12px;border-radius:12px;border:2px solid #2a3547;background:#0d121a;color:inherit;font:inherit;cursor:pointer}
@@ -56,8 +62,9 @@ export function abrirPausa(c: ContextoPausa): () => void {
   raiz.className = 'gp';
   raiz.setAttribute('role', 'dialog');
   raiz.setAttribute('aria-modal', 'true');
-  raiz.innerHTML = '<div class="gp-card"><h2>Pausado</h2><div class="gp-abas" role="tablist"></div><div class="gp-painel"></div><div class="gp-rodape"></div><div class="gp-aviso">Gata Santos — mapa da Paulista do acervo do dono.</div></div>';
+  raiz.innerHTML = '<div class="gp-card"><div class="gp-topo"><h2>Pausado</h2><button class="gp-x" type="button" aria-label="Fechar a pausa">✕</button></div><div class="gp-abas" role="tablist"></div><div class="gp-painel"></div><div class="gp-rodape"></div><div class="gp-aviso">Gata Santos — mapa da Paulista do acervo do dono.</div></div>';
   document.body.appendChild(raiz);
+  raiz.querySelector<HTMLButtonElement>('.gp-x')!.onclick = () => fechar();
   const abasEl = raiz.querySelector<HTMLElement>('.gp-abas')!, painel = raiz.querySelector<HTMLElement>('.gp-painel')!, rodape = raiz.querySelector<HTMLElement>('.gp-rodape')!;
   let aba: (typeof ABAS)[number] = 'Equipe';
   let fechada = false;

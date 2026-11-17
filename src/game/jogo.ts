@@ -323,7 +323,8 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     // sensibilidade ao mirar: × tan(fov atual/2) / tan(fov normal/2)
     const fator = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     cam.yaw -= m.dx * RAD_POR_PX * config.sens * fator;
-    cam.pitch = THREE.MathUtils.clamp(cam.pitch - m.dy * RAD_POR_PX * config.sens * fator, -0.5934, 1.2043);
+    // arrastar/mover para baixo = olhar para baixo (invertido a pedido do dono: PC e celular)
+    cam.pitch = THREE.MathUtils.clamp(cam.pitch + m.dy * RAD_POR_PX * config.sens * fator, -0.5934, 1.2043);
     const g = tecla('KeyG');
     if (g && !gAntes) cam.perto = !cam.perto;
     gAntes = g;

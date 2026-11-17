@@ -3,18 +3,27 @@ import { CORES, MODELOS, Veiculo } from '../game/vehicle';
 import { hex } from '../game/characters';
 
 const CSS = `
-.gg{position:fixed;inset:0;background:#0b0f14ee;display:flex;z-index:4;color:#eef2f7;font:18px/1.35 system-ui,sans-serif;overflow:auto;
- padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-.gg-card{margin:auto;width:min(560px,100%);background:#141b26;border:1px solid #2a3547;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px}
-.gg h2{margin:0;font-size:26px}
-.gg canvas{width:100%;height:auto;aspect-ratio:16/9;border-radius:12px;background:#1b2535}
+.gg{position:fixed;inset:0;background:#0b0f14ee;display:flex;z-index:7;color:#eef2f7;font:18px/1.35 system-ui,sans-serif;
+ padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.gg-card{margin:auto;width:min(620px,100%);max-height:calc(100dvh - 24px);background:#141b26;border:1px solid #2a3547;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.gg-topo{display:flex;align-items:center;justify-content:space-between}
+.gg h2{margin:0;font-size:24px}
+.gg-x{width:52px;height:52px;border:0;border-radius:50%;background:#334155;color:#fff;font-size:24px;cursor:pointer}
+.gg-corpo{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto}
+.gg canvas{width:100%;height:auto;aspect-ratio:16/9;border-radius:12px;background:#1b2535;min-width:0}
+.gg-opc{display:flex;flex-direction:column;gap:10px;min-width:0}
 .gg-linha{display:flex;gap:8px;flex-wrap:wrap}
-.gg-b{flex:1 1 30%;min-height:48px;padding:8px;border-radius:12px;border:2px solid #2a3547;background:#0d121a;color:inherit;font:inherit;cursor:pointer}
+.gg-b{flex:1 1 28%;min-height:46px;padding:6px;border-radius:12px;border:2px solid #2a3547;background:#0d121a;color:inherit;font:inherit;cursor:pointer}
 .gg-b[aria-pressed=true]{border-color:#3b82f6;background:#172338}
-.gg-cor{flex:0 0 52px;min-height:52px;border-radius:50%;border:3px solid #2a3547;cursor:pointer}
+.gg-cor{flex:0 0 46px;min-height:46px;border-radius:50%;border:3px solid #2a3547;cursor:pointer}
 .gg-cor[aria-pressed=true]{border-color:#fff}
-.gg-chamar{min-height:56px;border:0;border-radius:14px;background:#22c55e;color:#04210f;font:700 22px system-ui;cursor:pointer}
-.gg-fechar{min-height:48px;border:0;border-radius:12px;background:#334155;color:#fff;font:18px system-ui;cursor:pointer}
+.gg-chamar{min-height:52px;border:0;border-radius:14px;background:#22c55e;color:#04210f;font:700 21px system-ui,sans-serif;cursor:pointer}
+.gg-fechar{min-height:46px;border:0;border-radius:12px;background:#334155;color:#fff;font:17px system-ui,sans-serif;cursor:pointer}
+@media (orientation:landscape) and (max-height:560px){
+ .gg{font-size:16px}.gg-card{width:min(900px,100%);padding:8px 12px;gap:6px}.gg h2{font-size:20px}.gg-x{width:46px;height:46px}
+ .gg-corpo{flex-direction:row;gap:14px;overflow:hidden}.gg-corpo>*{flex:1 1 0}
+ .gg-opc{overflow-y:auto;gap:8px}.gg-b{min-height:40px;padding:3px}.gg-cor{flex-basis:40px;min-height:40px}.gg-chamar{min-height:46px;font-size:19px}.gg-fechar{display:none}
+}
 `;
 
 export interface EscolhaGaragem {
@@ -33,9 +42,10 @@ export function abrirGaragem(inicial: EscolhaGaragem, aoChamar: (e: EscolhaGarag
   const sel = { ...inicial };
   const raiz = document.createElement('div');
   raiz.className = 'gg';
-  raiz.innerHTML = `<div class="gg-card"><h2>Garagem</h2><canvas width="640" height="360"></canvas>
+  raiz.innerHTML = `<div class="gg-card"><div class="gg-topo"><h2>Garagem</h2><button class="gg-x" type="button" aria-label="Fechar a garagem">✕</button></div>
+    <div class="gg-corpo"><canvas width="640" height="360"></canvas><div class="gg-opc">
     <div class="gg-linha gg-modelos"></div><div class="gg-linha gg-cores"></div>
-    <button class="gg-chamar" type="button">Chamar</button><button class="gg-fechar" type="button">Fechar</button></div>`;
+    <button class="gg-chamar" type="button">Chamar</button><button class="gg-fechar" type="button">Fechar</button></div></div></div>`;
   document.body.appendChild(raiz);
 
   const canvas = raiz.querySelector('canvas')!;
@@ -108,5 +118,7 @@ export function abrirGaragem(inicial: EscolhaGaragem, aoChamar: (e: EscolhaGarag
   addEventListener('keydown', tecla);
   raiz.querySelector<HTMLButtonElement>('.gg-chamar')!.onclick = () => { aoChamar({ ...sel }); fechar(); };
   raiz.querySelector<HTMLButtonElement>('.gg-fechar')!.onclick = fechar;
+  raiz.querySelector<HTMLButtonElement>('.gg-x')!.onclick = fechar;
+  raiz.querySelector<HTMLButtonElement>('.gg-chamar')!.focus(); // foco ao abrir
   return fechar;
 }

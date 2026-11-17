@@ -53,7 +53,21 @@ const CSS = `
 .gm-cores i{flex:1}
 .gm-entrar{min-height:56px;border:0;border-radius:14px;background:#22c55e;color:#04210f;font:700 22px system-ui;cursor:pointer}
 .gm-entrar:active{transform:scale(.98)}
-.gm-aviso{font-size:18px;opacity:.7;text-align:center}
+.gm-aviso{font-size:16px;opacity:.7;text-align:center}
+.gm-cols{display:flex;flex-direction:column;gap:14px}.gm-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.gm{height:100dvh}
+@media (orientation:landscape) and (max-height:560px){
+ .gm{font-size:16px}.gm-card{width:min(900px,100%);padding:10px 16px;gap:6px}.gm h1{font-size:22px}
+ .gm-cols{flex-direction:row;gap:18px}.gm-col{flex:1;gap:8px}
+ .gm-foto{width:78px;height:78px}.gm-pers{margin-top:-2px}
+ .gm label{font-size:15px}.gm input[type=text]{padding:8px}
+ .gm-chip{min-height:42px;padding:4px 8px;font-size:15px}.gm-entrar{min-height:46px;font-size:19px}.gm-aviso{font-size:13px}
+}
+@media (orientation:landscape) and (max-height:380px){
+ .gm-aviso{display:none}.gm-foto{width:54px;height:54px;border-width:3px}.gm-pers{font-size:14px}.gm label{font-size:14px}
+ .gm-chip{min-height:38px;font-size:14px;white-space:nowrap;overflow:hidden}.gm-entrar{min-height:42px;font-size:18px}.gm h1{font-size:18px}
+ .gm-card{padding:6px 12px;gap:4px}.gm-cols{gap:12px}.gm-col{gap:5px}.gm input[type=text]{padding:6px}
+}
 `;
 
 /**
@@ -84,14 +98,20 @@ export function mostrarMenu(): Promise<ConfigJogo> {
   raiz.innerHTML = `
     <div class="gm-card">
       <h1>Gata Santos</h1>
-      <img class="gm-foto" alt="Personagem escolhido" />
-      <div class="gm-pers"></div>
-      <div><label for="gm-nome">Seu nome</label>
-        <input id="gm-nome" type="text" maxlength="16" autocomplete="off" placeholder="Jogador" /></div>
-      <div><label>Equipe</label><div class="gm-linha gm-equipes"></div></div>
-      <div><label>Mapa</label><div class="gm-linha gm-mapas"></div></div>
-      <button class="gm-entrar" type="button">Entrar no jogo</button>
-      <div class="gm-aviso">Sem login: só o seu nome. Quem estiver no mapa vê você.</div>
+      <div class="gm-cols">
+        <div class="gm-col">
+          <img class="gm-foto" alt="Personagem escolhido" />
+          <div class="gm-pers"></div>
+          <div><label for="gm-nome">Seu nome</label>
+            <input id="gm-nome" type="text" maxlength="16" autocomplete="off" placeholder="Jogador" /></div>
+        </div>
+        <div class="gm-col">
+          <div><label>Equipe</label><div class="gm-linha gm-equipes"></div></div>
+          <div><label>Mapa</label><div class="gm-linha gm-mapas"></div></div>
+          <button class="gm-entrar" type="button">Entrar no jogo</button>
+          <div class="gm-aviso">Sem login: só o seu nome. Quem estiver no mapa vê você.</div>
+        </div>
+      </div>
     </div>`;
   document.body.appendChild(raiz);
 

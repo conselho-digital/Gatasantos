@@ -57,7 +57,8 @@ function caixa(lista: THREE.BufferGeometry[], w: number, h: number, d: number, x
 function montar(m: ModeloVeiculo, cor: number) {
   const L = m.comprimento, W = m.largura;
   const g: THREE.BufferGeometry[] = [];
-  const vidro = 0x1b2630, farol = 0xfff2c0, lanterna = 0xb01818, escuro = 0x222222;
+  const gv: THREE.BufferGeometry[] = []; // vidros (translúcidos: o motorista aparece dentro)
+  const vidro = 0x9fc4e0, farol = 0xfff2c0, lanterna = 0xb01818, escuro = 0x222222;
   const rodas: THREE.Object3D[] = [];
   const grupo = new THREE.Group();
   grupo.name = m.id;
@@ -81,9 +82,11 @@ function montar(m: ModeloVeiculo, cor: number) {
       rodas.push(r);
     }
   } else {
-    caixa(g, W, 0.5, L, 0, 0.55, 0, corpo); // chassi
-    caixa(g, W * 0.9, 0.48, L * 0.5, 0, 1.03, -L * 0.07, vidro); // cabine (vidros)
-    caixa(g, W * 0.88, 0.07, L * 0.47, 0, 1.3, -L * 0.07, corpo); // teto
+    // Altura de carro de verdade (~1,5 m): o motorista (1,8 m, sentado) cabe dentro, com a cabeça abaixo do teto.
+    caixa(g, W, 0.65, L, 0, 0.475, 0, corpo); // chassi (desce até 0,15 m: esconde as pernas)
+    caixa(gv, W * 0.88, 0.62, L * 0.46, 0, 1.12, -L * 0.07, vidro); // vidros
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) caixa(g, 0.07, 0.66, 0.07, sx * W * 0.44, 1.12, -L * 0.07 + sz * L * 0.235, corpo); // colunas
+    caixa(g, W * 0.9, 0.06, L * 0.5, 0, 1.47, -L * 0.07, corpo); // teto
     caixa(g, W, 0.14, 0.12, 0, 0.32, L / 2 + 0.03, escuro); // para-choques
     caixa(g, W, 0.14, 0.12, 0, 0.32, -L / 2 - 0.03, escuro);
     for (const sx of [-1, 1]) {
@@ -91,7 +94,7 @@ function montar(m: ModeloVeiculo, cor: number) {
       caixa(g, 0.32, 0.13, 0.06, sx * W * 0.31, 0.66, -L / 2 - 0.01, lanterna);
     }
     if (m.tipo === 'viatura') {
-      caixa(g, W * 0.9, 0.18, 0.5, 0, 0.7, L * 0.12, 0x1d3a8a); // faixa azul nas portas
+      caixa(g, W * 1.01, 0.18, 0.5, 0, 0.62, L * 0.12, 0x1d3a8a); // faixa azul nas portas
     }
     const eixo = m.entreEixos / 2;
     for (const [nome, sx, z] of [['wheel_FL', 1, eixo], ['wheel_FR', -1, eixo], ['wheel_BL', 1, -eixo], ['wheel_BR', -1, -eixo]] as const) {
@@ -104,19 +107,28 @@ function montar(m: ModeloVeiculo, cor: number) {
     if (m.tipo === 'viatura') {
       const mr = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.22), new THREE.MeshBasicMaterial({ color: 0x551111 }));
       const ma = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.22), new THREE.MeshBasicMaterial({ color: 0x111155 }));
-      mr.position.set(0.28, 1.42, -L * 0.07);
-      ma.position.set(-0.28, 1.42, -L * 0.07);
+      mr.position.set(0.28, 1.56, -L * 0.07);
+      ma.position.set(-0.28, 1.56, -L * 0.07);
       grupo.add(mr, ma);
       barra = { r: mr, a: ma };
     }
   }
   const merged = mergeGeometries(g, false)!;
+  let vidros: THREE.Mesh | null = null;
+  let matVidro: THREE.MeshLambertMaterial | null = null;
+  if (gv.length) {
+    matVidro = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false });
+    vidros = new THREE.Mesh(mergeGeometries(gv, false)!, matVidro);
+    vidros.name = 'vidros';
+    vidros.renderOrder = 2;
+    grupo.add(vidros);
+  }
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const body = new THREE.Mesh(merged, mat);
   body.name = 'body';
   body.castShadow = false;
   grupo.add(body);
-  return { grupo, rodas, body, mat, barra };
+  return { grupo, rodas, body, mat, barra, vidros, matVidro };
 }
 
 export interface EntradaVeiculo {
@@ -140,6 +152,8 @@ export class Veiculo {
   private mat: THREE.MeshLambertMaterial;
   private body: THREE.Mesh;
   private barra: { r: THREE.Mesh; a: THREE.Mesh } | null;
+  private vidros: THREE.Mesh | null;
+  private matVidro: THREE.MeshLambertMaterial | null;
   x = 0;
   z = 0;
   h = 0; // direção (0 = +Z)
@@ -159,6 +173,8 @@ export class Veiculo {
     this.mat = m.mat;
     this.body = m.body;
     this.barra = m.barra;
+    this.vidros = m.vidros;
+    this.matVidro = m.matVidro;
   }
 
   get ehMoto(): boolean {
@@ -175,7 +191,8 @@ export class Veiculo {
     const fx = Math.sin(this.h), fz = Math.cos(this.h), rx = -fz, rz = fx;
     const lado = this.ehMoto ? 0 : -0.38; // esquerda = −direita
     const recuo = this.ehMoto ? -0.15 : -0.05;
-    return out.set(this.x + fx * recuo + rx * lado, this.ehMoto ? 0.12 : 0.18, this.z + fz * recuo + rz * lado);
+    // carro: banco afundado na carroceria (0,22 m abaixo da rua) para a cabeça ficar abaixo do teto; moto: sentado em cima
+    return out.set(this.x + fx * recuo + rx * lado, this.ehMoto ? 0.12 : -0.22, this.z + fz * recuo + rz * lado);
   }
 
   /** Ponto ao lado da porta: lado -1 = esquerda do veículo, +1 = direita. */
@@ -287,6 +304,8 @@ export class Veiculo {
     this.grupo.removeFromParent();
     this.body.geometry.dispose();
     this.mat.dispose();
+    this.vidros?.geometry.dispose();
+    this.matVidro?.dispose();
     if (this.barra) {
       (this.barra.r.material as THREE.Material).dispose();
       (this.barra.a.material as THREE.Material).dispose();
