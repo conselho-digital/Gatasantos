@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Fotos de rosto (dev)</title></head>
+<body style="margin:0;background:#111;color:#eee;font:16px sans-serif">
+<p>Gera <code>public/faces/&lt;id&gt;.webp</code>. Use <code>window.__faces</code> (id → dataURL).</p>
+<script type="module">
+import * as THREE from 'three';
+import { criarPersonagem } from '/src/game/character.ts';
+import { PERSONAGENS } from '/src/game/characters.ts';
+
+const T = 256;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(T, T);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
+const cor = { Famosos: 0x3b4a6b, Polícia: 0x24364f, Gangue: 0x4a2a2a, Meninas: 0x5a3a5e };
+const faces = {};
+for (const d of PERSONAGENS) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(cor[d.categoria]);
+  const p = criarPersonagem(d);
+  p.raiz.traverse((o) => { if (o.name === 'anel-equipe') o.visible = false; });
+  scene.add(p.raiz);
+  p.raiz.updateMatrixWorld(true);
+  const alvo = p.osso.Head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.12, 0));
+  // câmera a 20° de FOV, 1,25 m, centrada no rosto
+  const cam = new THREE.PerspectiveCamera(20, 1, 0.1, 10);
+  cam.position.set(alvo.x, alvo.y, alvo.z + 1.25);
+  cam.lookAt(alvo);
+  renderer.render(scene, cam);
+  faces[d.id] = renderer.domElement.toDataURL('image/webp', 0.85);
+}
+window.__faces = faces;
+window.__pronto = true;
+</script></body></html>

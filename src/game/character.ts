@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { DefPersonagem } from './characters';
 
 /** Ossos nomeados (estilo GTA) para a etapa 4 animar. */
 export interface Personagem {
@@ -15,7 +16,9 @@ function peca(geo: THREE.BufferGeometry, cor: number, x = 0, y = 0, z = 0): THRE
 }
 
 /** Boneco low-poly gerado por código (~700 triângulos). */
-export function criarPersonagem(roupa = 0x2e6fbd, calca = 0x2b2f3a, pele = 0xe0b48f): Personagem {
+export function criarPersonagem(def?: DefPersonagem): Personagem {
+  const roupa = def?.roupa ?? 0x2e6fbd, calca = def?.calca ?? 0x2b2f3a, pele = def?.pele ?? 0xe0b48f;
+  const corCabelo = def?.cabelo ?? 0x2a1d14;
   const raiz = new THREE.Group();
   raiz.name = 'personagem';
   const osso: Record<string, THREE.Object3D> = {};
@@ -37,7 +40,28 @@ export function criarPersonagem(roupa = 0x2e6fbd, calca = 0x2b2f3a, pele = 0xe0b
   neck.add(peca(new THREE.CylinderGeometry(0.05, 0.06, 0.1, 8), pele, 0, 0.04));
   const head = junta('Head', neck, 0, 0.1);
   head.add(peca(new THREE.SphereGeometry(0.11, 12, 10), pele, 0, 0.11));
-  head.add(peca(new THREE.SphereGeometry(0.115, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), 0x2a1d14, 0, 0.12, -0.005));
+  head.add(peca(new THREE.SphereGeometry(0.115, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), corCabelo, 0, 0.12, -0.005));
+  for (const ex of [-0.04, 0.04]) head.add(peca(new THREE.SphereGeometry(0.014, 6, 4), 0x151515, ex, 0.125, 0.101));
+  head.add(peca(new THREE.BoxGeometry(0.05, 0.01, 0.01), 0x8a3b3b, 0, 0.07, 0.106));
+  if (def?.cabeloLongo) head.add(peca(new THREE.BoxGeometry(0.22, 0.3, 0.07), corCabelo, 0, 0.0, -0.1));
+  const corAc = def?.corAcessorio ?? 0x222222;
+  switch (def?.acessorio) {
+    case 'bone':
+      head.add(peca(new THREE.CylinderGeometry(0.118, 0.118, 0.07, 12, 1, false, 0, Math.PI * 2), corAc, 0, 0.2));
+      head.add(peca(new THREE.BoxGeometry(0.14, 0.012, 0.09), corAc, 0, 0.18, 0.12));
+      break;
+    case 'quepe':
+      head.add(peca(new THREE.CylinderGeometry(0.125, 0.135, 0.08, 12), corAc, 0, 0.215));
+      head.add(peca(new THREE.BoxGeometry(0.16, 0.012, 0.08), 0x111111, 0, 0.18, 0.12));
+      break;
+    case 'chapeu':
+      head.add(peca(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 12), corAc, 0, 0.3));
+      break;
+    case 'bandana':
+      head.add(peca(new THREE.CylinderGeometry(0.119, 0.119, 0.045, 12), corAc, 0, 0.19));
+      break;
+    default:
+  }
 
   for (const [lado, sx] of [['L', 1], ['R', -1]] as const) {
     const ombro = junta(`${lado}_UpperArm`, spine, sx * 0.26, 0.5);

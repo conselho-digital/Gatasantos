@@ -63,3 +63,18 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Conferido em folha de quadros (8 clipes) por captura lateral.
 - Limites: correr tem fase aérea, então os quartis de medida ficam ruidosos (vale a mediana); sem rolar/escalar/cair ainda;
   pulo só no plano (sem subir em caixas).
+
+## Rodada: Etapa 5 — Menu inicial, personagem e equipe (SEM login por enquanto)
+- Decisão do dono: **sem Supabase e sem Google por enquanto**. O botão "Entrar no jogo" entra direto; o login
+  (Supabase Auth + Google GSI) e a regra "só entra quem fez login" ficam para depois. Não há `@supabase/supabase-js` ainda.
+  O único projeto Supabase da conta (`manifestacao`) é do jogo antigo: não reutilizar sem o dono decidir.
+- `ui/menu.ts`: fundo liso, foto do rosto, nome (máx. 16, sem caracteres de controle), equipe (a 1ª marcada por padrão),
+  mapa (Mapa 2 "em breve"), seleção em carrosséis por categoria (setas no PC, arrasto no celular), fotos sem `loading=lazy`,
+  URL `?v=N`. Escolha guardada em `localStorage` (`gata-config`, com try/catch).
+- `main.ts` mostra o menu; `game/jogo.ts` (`iniciarJogo`) só monta cena e mapa depois do clique (0 canvas antes de Entrar).
+  Mouse preso pedido no clique. `?menu=0` (só dev) pula o menu; `?char=<id>` escolhe o personagem.
+- `game/characters.ts`: 10 personagens em 4 categorias (Famosos, Polícia, Gangue, Meninas) + 4 equipes (duas cores) + mapas.
+  `character.ts` aceita a definição (cabelo, boné/quepe/chapéu/bandana, olhos). Anel de duas cores sob os pés (`teams.ts`).
+- Fotos: `dev/face-shots.html` (câmera 20° de FOV, 1,25 m) gera `public/faces/<id>.webp` (~2 KB cada, 10 arquivos).
+- Medido: menu → jogo ok no navegador (nome, equipe e personagem gravados), 0 erros de página.
+- Limites: sem login; equipes são locais (tabela `teams` depois); sem rosto de foto real; menu sem teste em celular real.
