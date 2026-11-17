@@ -4,6 +4,8 @@ export interface Caixa {
   maxX: number;
   minZ: number;
   maxZ: number;
+  /** Altura da caixa (m). Sem valor = infinita. */
+  h?: number;
 }
 
 /** Lista de colisores do mapa atual (jogador, veículos, balas, câmera). */
@@ -13,8 +15,8 @@ export function limparColisores(): void {
   COLLIDERS.length = 0;
 }
 
-export function caixaCentro(cx: number, cz: number, larg: number, prof: number): Caixa {
-  return { minX: cx - larg / 2, maxX: cx + larg / 2, minZ: cz - prof / 2, maxZ: cz + prof / 2 };
+export function caixaCentro(cx: number, cz: number, larg: number, prof: number, h?: number): Caixa {
+  return { minX: cx - larg / 2, maxX: cx + larg / 2, minZ: cz - prof / 2, maxZ: cz + prof / 2, h };
 }
 
 /** Empurra um círculo (x,z,raio) para fora de todas as caixas. Devolve a posição corrigida. */

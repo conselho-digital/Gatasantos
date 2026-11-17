@@ -37,3 +37,15 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Teste: correr 9 s contra prédio parou em z = −36,6 (face −37 − raio 0,4); contra o muro parou em x = 121,6;
   diagonal desliza pela parede; 0 amostras dentro de colisor.
 - Limites: sem avenida com ruas transversais, parque nem calçadas detalhadas (etapa 12); câmera ainda atravessa prédio (etapa 3).
+
+## Rodada: Etapa 3 — Personagem + câmera
+- `character.ts`: boneco low-poly por código (~700 tri, `MeshBasicMaterial` sem luz, sombra por círculo).
+  Ossos nomeados (`Pelvis, Spine, Neck, Head, L/R_UpperArm/ForeArm/Hand/Thigh/Calf/Foot`) prontos para a etapa 4.
+- `camera.ts`: orbital 3ª pessoa, 2,7 m atrás e 0,7 m à direita, pitch −34°..+69° (inicial 0,28), tecla G = perto,
+  plano próximo 0,4 m, recuo mínimo 0,3 m. Recua pelo raio até a 1ª caixa engordada (0,9 m) e usa
+  `pushOutOfBoxes` duas vezes (no ponto desejado e depois do suavizado). `Caixa` ganhou altura `h` opcional.
+- Mouse preso ao clicar; giro = px × 0,004 × sensibilidade 0,6 (sem `dt`). WASD relativo à câmera; Shift corre.
+- Medido: distância mínima câmera–caixa em 64 posições (16 giros × 4 inclinações): 0,900 m
+  (colado na parede, a 1 m, canto de prédio e canto do muro) — aceite ≥ 0,9 ok. Via `__game.camTeste(x,z)`.
+- Render: 32 chamadas, 1330 triângulos; 0 erros de página.
+- Limites: sem mira/FOV, sem câmera de veículo; boneco ainda sem animação (etapa 4); cabelo/rosto simples.

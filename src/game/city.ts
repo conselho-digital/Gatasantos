@@ -122,7 +122,7 @@ export function criarCidade(): Cidade {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, MURO, d), matMuro);
     m.position.set(cx, MURO / 2, cz);
     grupo.add(m);
-    COLLIDERS.push(caixaCentro(cx, cz, w, d));
+    COLLIDERS.push(caixaCentro(cx, cz, w, d, MURO));
   };
   const esp = 1;
   muro(0, -halfZ - esp / 2, halfX * 2 + esp * 2, esp);
@@ -135,7 +135,7 @@ export function criarCidade(): Cidade {
   const porTipo = new Map<TipoFachada, THREE.BufferGeometry[]>();
   for (const p of PREDIOS) {
     (porTipo.get(p.tipo) ?? porTipo.set(p.tipo, []).get(p.tipo)!).push(geoCaixa(p));
-    COLLIDERS.push(caixaCentro(p.x, p.z, p.w, p.d));
+    COLLIDERS.push(caixaCentro(p.x, p.z, p.w, p.d, p.h));
   }
   for (const [tipo, geos] of porTipo) {
     const merged = mergeGeometries(geos, true);

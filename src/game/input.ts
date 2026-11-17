@@ -14,3 +14,30 @@ export function eixoMovimento(): { x: number; y: number } {
   const y = (tecla('KeyW') ? 1 : 0) - (tecla('KeyS') ? 1 : 0);
   return { x, y };
 }
+
+// Mouse preso: deltas acumulados até serem consumidos.
+let dx = 0;
+let dy = 0;
+let preso = false;
+
+export function iniciarMouse(alvo: HTMLElement): void {
+  alvo.addEventListener('click', () => {
+    if (!document.pointerLockElement) alvo.requestPointerLock?.();
+  });
+  document.addEventListener('pointerlockchange', () => {
+    preso = document.pointerLockElement === alvo;
+  });
+  addEventListener('mousemove', (e) => {
+    if (!preso) return;
+    dx += e.movementX;
+    dy += e.movementY;
+  });
+}
+
+/** Devolve e zera o giro do mouse (pixels). Mouse delta não leva `dt`. */
+export function consumirMouse(): { dx: number; dy: number } {
+  const r = { dx, dy };
+  dx = 0;
+  dy = 0;
+  return r;
+}
