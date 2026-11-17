@@ -5,7 +5,7 @@ import { criarPaulista } from './paulista';
 import { COLLIDERS, empurrarCirculo, pontoLivre } from './collision';
 import { apertou, botaoMouse, forcarBotao, consumirMouse, consumirRoda, eixoMovimento, iniciarMouse, limparToques, tecla } from './input';
 import { criarPersonagem } from './character';
-import { achar, type Equipe } from './characters';
+import { achar, EQUIPES, type Equipe } from './characters';
 import { criarAnelEquipe } from './teams';
 import { Animador, medirPasso, TIME_SCALE, VEL_JOGO, type Clip } from './anim';
 import { atualizarCamera, distanciaMinimaDeCaixas, novoEstadoCamera, posicaoDesejada } from './camera';
@@ -17,6 +17,9 @@ import { Pedestres } from './npcs';
 import { ouvirRuido } from './noise';
 import { ARMAS, armaPorId, simularCadencia, tabelaTempoParaMatar, type ArmaId } from './weapons';
 import { Hud } from '../ui/hud';
+import { abrirPausa } from '../ui/pausa';
+import { gravarConfig, lerConfig } from './settings';
+import { definirJoystick } from './input';
 import { Conducao } from './driving';
 import { Som, type Controle, type Motor, type TipoTiro } from './audio';
 import { criarControlesToque } from '../ui/touch';
@@ -36,7 +39,6 @@ export interface ConfigJogo {
 
 const FOV = 60;
 const FOV_MIRANDO = FOV * 0.7;
-const SENS = 0.6; // padrão 0,6x
 const RAD_POR_PX = 0.004;
 const RAIO = 0.4;
 const GRAVIDADE = 16;
@@ -61,11 +63,15 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
   aviso.remove();
   scene.add(cidade.grupo);
 
-  const boneco = criarPersonagem(achar(cfg.personagem));
+  let personagemId = achar(cfg.personagem).id;
+  let equipe = cfg.equipe;
+  let boneco = criarPersonagem(achar(personagemId));
   boneco.raiz.rotation.order = 'YXZ';
-  boneco.raiz.add(criarAnelEquipe(cfg.equipe));
+  let anel = criarAnelEquipe(equipe);
+  boneco.raiz.add(anel);
   scene.add(boneco.raiz);
-  const anim = new Animador(boneco);
+  let anim = new Animador(boneco);
+  const config = lerConfig(); // sensibilidade, limite de FPS e volumes
 
   let altura = 0;
   let vy = 0;
@@ -218,6 +224,79 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     armaMostrada = combate.arma.id;
   };
 
+  /** Troca o personagem ao vivo: novo corpo, mesma posição; os outros veem pela presence. */
+  const recriarPersonagem = (id: string) => {
+    personagemId = id;
+    const antigo = boneco;
+    naMao?.grupo.removeFromParent();
+    naMao = null;
+    armaMostrada = null;
+    scene.remove(antigo.raiz);
+    antigo.malha.geometry.dispose();
+    (antigo.malha.material as THREE.Material).dispose();
+    antigo.malha.skeleton.dispose();
+    boneco = criarPersonagem(achar(id));
+    boneco.raiz.rotation.order = 'YXZ';
+    anel = criarAnelEquipe(equipe);
+    boneco.raiz.add(anel);
+    scene.add(boneco.raiz);
+    anim = new Animador(boneco);
+    publicarIdentidade();
+  };
+  const trocarEquipe = (i: number) => {
+    equipe = EQUIPES[i];
+    boneco.raiz.remove(anel);
+    anel.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } });
+    anel = criarAnelEquipe(equipe);
+    boneco.raiz.add(anel);
+    publicarIdentidade();
+  };
+  /** Equipe/personagem mudaram: os outros jogadores atualizam ao vivo (presence). */
+  const publicarIdentidade = () => {
+    online.eu.pers = personagemId;
+    online.eu.eq = { n: equipe.nome, c1: equipe.c1, c2: equipe.c2 };
+    void online.atualizarVeiculo(online.eu.veh);
+  };
+
+  // Pausa (P / engrenagem / Esc): congela só o jogo local; os outros continuam
+  let pausado = false;
+  let fechaPausa: (() => void) | null = null;
+  const aplicarConfig = () => {
+    som?.definirVolume('master', config.volMaster);
+    som?.definirVolume('sfx', config.volSfx);
+    som?.definirVolume('veiculos', config.volVeiculos);
+    gravarConfig(config);
+  };
+  aplicarConfig();
+  const abrirPausaUi = () => {
+    if (pausado || garagemAberta) return;
+    pausado = true;
+    combate.imune = true; // a pausa dá imunidade (só no meu jogo)
+    document.exitPointerLock?.();
+    definirJoystick(0, 0);
+    fechaPausa = abrirPausa({
+      equipeAtual: EQUIPES.indexOf(equipe),
+      aoEquipe: trocarEquipe,
+      personagemAtual: personagemId,
+      aoPersonagem: recriarPersonagem,
+      armaAtual: combate.arma.id,
+      aoArma: (id) => combate.trocar(id),
+      aoGaragem: () => { fechaPausa?.(); setTimeout(abrirGaragemUi, 0); },
+      placar: () => online.placar({ nome: cfg.nome, mortes: combate.mortes, abates: combate.abates + online.abates }),
+      config,
+      aoConfig: aplicarConfig,
+      aoVoltarAoMenu: () => location.reload(),
+      aoFechar: () => { pausado = false; combate.imune = false; fechaPausa = null; limparToques(); travarMouse(); },
+    });
+  };
+  // Perder o mouse preso (Esc) no PC abre a pausa
+  document.addEventListener('pointerlockchange', () => {
+    if (!document.pointerLockElement && !grosso && !pausado && !garagemAberta && iniciou) abrirPausaUi();
+  });
+  let iniciou = false;
+  setTimeout(() => { iniciou = true; }, 1500);
+  hud.engrenagem(() => abrirPausaUi());
+
   const camFixa = params.get('cam')?.split(',').map(Number);
   const timer = new THREE.Timer();
   const tmp = { x: 0, z: 0 };
@@ -230,14 +309,21 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
   let relogio = 0; // tempo de jogo (s), só para testes
 
   function atualizar(dt: number) {
+    if (apertou('KeyP')) { abrirPausaUi(); }
+    if (pausado) {
+      // pausado: só os outros jogadores seguem (interpolação); o meu jogo está congelado
+      consumirMouse(); consumirRoda();
+      online.remotos.atualizar(dt);
+      return;
+    }
     relogio += dt;
     const morto = combate.morto > 0;
     const m = consumirMouse();
     const mirando = botaoMouse(2) && !combate.arma.corpoACorpo && !morto;
     // sensibilidade ao mirar: × tan(fov atual/2) / tan(fov normal/2)
     const fator = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    cam.yaw -= m.dx * RAD_POR_PX * SENS * fator;
-    cam.pitch = THREE.MathUtils.clamp(cam.pitch - m.dy * RAD_POR_PX * SENS * fator, -0.5934, 1.2043);
+    cam.yaw -= m.dx * RAD_POR_PX * config.sens * fator;
+    cam.pitch = THREE.MathUtils.clamp(cam.pitch - m.dy * RAD_POR_PX * config.sens * fator, -0.5934, 1.2043);
     const g = tecla('KeyG');
     if (g && !gAntes) cam.perto = !cam.perto;
     gAntes = g;
@@ -456,7 +542,15 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
   // Entra na sessão online (assíncrono: o jogo já roda sozinho enquanto conecta)
   if (params.get('offline') !== '1') void online.conectar(params.get('room') ?? cfg.mapa, maxSessao);
 
+  // Limite de FPS: só espera pelo próximo quadro numa grade fixa (nunca perde simulação: o dt acumula)
+  let proxQuadro = 0;
   renderer.setAnimationLoop((agora: number) => {
+    if (config.fps) {
+      const iv = 1000 / config.fps;
+      if (agora + 0.5 < proxQuadro) return;
+      proxQuadro += iv;
+      if (proxQuadro <= agora) proxQuadro = agora + iv - ((agora - proxQuadro) % iv);
+    }
     timer.update(agora);
     atualizar(Math.min(timer.getDelta(), 0.05));
     renderer.render(scene, camera);
@@ -478,6 +572,9 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       combat: () => combate,
       conducao,
       som,
+      config,
+      pausar: () => abrirPausaUi(),
+      estaPausado: () => pausado,
       vk: () => ({ modo: conducao.modo, v: conducao.veiculo ? { x: conducao.veiculo.x, z: conducao.veiculo.z, h: conducao.veiculo.h, vel: conducao.veiculo.v, caido: conducao.veiculo.caido } : null }),
       npcs: () => npcs.resumo(),
       npcsObj: npcs,

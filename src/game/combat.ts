@@ -93,8 +93,11 @@ export class Combate {
   }
 
   /** Dano em mim: colete absorve 60% enquanto durar. Respeita a proteção. */
+  /** Pausa: imunidade só no meu jogo. */
+  imune = false;
+
   danoEmMim(valor: number): boolean {
-    if (this.morto > 0 || this.protecao > 0) return false;
+    if (this.imune || this.morto > 0 || this.protecao > 0) return false;
     const abs = Math.min(this.colete, valor * 0.6);
     this.colete -= abs;
     this.vida -= valor - abs;

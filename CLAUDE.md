@@ -224,3 +224,19 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Limites: **ninguém ouviu ainda** (só medi e contei): peço ao dono para ouvir em fone e alto-falante do celular e dizer se motor/tiros/sirene
   soam bem; sem música nem ducking (a voz é a etapa 10: o barramento `voz` já existe para ducking); sem menu de volume (etapa 11); passos e
   pneu só chiam ao derrapar; sons de NPC não existem; iOS exige o toque de Entrar para liberar o áudio (já é assim).
+
+## Rodada: Etapa 11 (parcial) — Pausa e configurações (seguindo `game-ui-ux`)
+- Skills usadas: `router` → `game-ui-ux` (tela como **pilha**, foco ao abrir, Esc fecha a tela de cima, texto ≥ 18 px, margens `env(safe-area-inset-*)`,
+  HUD por eventos, cor nunca é o único sinal). A pausa roda em tempo real e não congela a si mesma.
+- `ui/pausa.ts`: abre com **P**, **engrenagem ⚙** (PC e celular) ou **Esc** (perder o mouse preso abre a pausa). Abas: Equipe, Personagem, Armas, Garagem,
+  Ranking (placar da sessão), Configurações. Rodapé: Voltar ao jogo e **Voltar ao menu (2 toques)**; créditos.
+  Pausar congela **só o jogo local** (NPCs, veículos, tiros); os outros jogadores seguem; a pausa dá **imunidade só no meu jogo**.
+- Troca ao vivo: **equipe** (anel novo) e **personagem** (corpo novo: libera geometria/material do antigo) são publicados pela presence e o outro jogador
+  atualiza na hora. `ui/selecao.ts`: carrosséis compartilhados entre o menu e a pausa.
+- `game/settings.ts`: sensibilidade 0,2x–3x (padrão 0,6x), limite de FPS (livre/30/45/60/90/120), volumes geral/tiros/veículos (slider ao quadrado),
+  guardados em `localStorage` (`gata-opcoes`) com try/catch. O limite de FPS só espera o próximo quadro numa grade fixa; o `dt` acumula (nada é descartado).
+- Bug achado pelo teste e corrigido: no celular a camada de toque cobria a engrenagem; o HUD agora fica acima (`z-index:4`, `pointer-events:none` exceto o botão).
+- Testes (emulação de celular 844x390, 2 abas): toque na engrenagem abre a pausa com foco em "Voltar ao jogo"; relógio do jogo parado durante a pausa
+  (8,38 → 8,38); dano na pausa ignorado (vida 400); B vê A trocar para Oficial / Vermelha-branca; configurações salvas; voltar ao jogo retoma; 0 erros.
+- **Não feito (precisam de login/identidade, que o dono dispensou):** loja e preços, inventário por conta, admin (gerenciar equipes/preços/outdoor),
+  ranking global e compras (`purchases`). O ranking da pausa é só da sessão. Equipes são fixas no código (sem a tabela `teams`).

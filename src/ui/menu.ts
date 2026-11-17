@@ -1,8 +1,8 @@
-import { CATEGORIAS, EQUIPES, hex, MAPAS, PERSONAGENS, achar } from '../game/characters';
+import { EQUIPES, hex, MAPAS, PERSONAGENS, achar } from '../game/characters';
 import type { ConfigJogo } from '../game/jogo';
+import { abrirSelecaoPersonagem, rosto } from './selecao';
 
 const CHAVE = 'gata-config';
-const VERSAO_FOTOS = 1; // sobe quando as fotos de rosto mudarem (?v=N fura o cache)
 
 interface Salvo {
   nome: string;
@@ -33,7 +33,6 @@ function gravar(s: Salvo): void {
   }
 }
 
-const rosto = (id: string) => `/faces/${id}.webp?v=${VERSAO_FOTOS}`;
 
 const CSS = `
 .gm{position:fixed;inset:0;display:flex;overflow:auto;
@@ -55,17 +54,6 @@ const CSS = `
 .gm-entrar{min-height:56px;border:0;border-radius:14px;background:#22c55e;color:#04210f;font:700 22px system-ui;cursor:pointer}
 .gm-entrar:active{transform:scale(.98)}
 .gm-aviso{font-size:18px;opacity:.7;text-align:center}
-.gm-sel{position:fixed;inset:0;background:#0b0f14f2;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px 24px;z-index:2}
-.gm-sel h2{margin:12px 0 6px;font-size:22px}
-.gm-car{display:flex;align-items:center;gap:6px}
-.gm-trilho{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:8px 2px;flex:1;scrollbar-width:none}
-.gm-trilho::-webkit-scrollbar{display:none}
-.gm-item{flex:0 0 112px;scroll-snap-align:start;text-align:center;background:#141b26;border:3px solid transparent;border-radius:14px;padding:8px;cursor:pointer;color:inherit;font:inherit}
-.gm-item[aria-pressed=true]{border-color:#3b82f6}
-.gm-item img{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#222;display:block;margin:0 auto 6px}
-.gm-seta{width:44px;height:64px;border:0;border-radius:10px;background:#1d2736;color:#fff;font-size:24px;cursor:pointer}
-@media (pointer:coarse){.gm-seta{display:none}}
-.gm-fechar{position:sticky;top:0;float:right;min-height:48px;padding:8px 18px;border:0;border-radius:12px;background:#3b82f6;color:#fff;font:700 18px system-ui;cursor:pointer}
 `;
 
 /**
@@ -151,46 +139,8 @@ export function mostrarMenu(): Promise<ConfigJogo> {
     linhaMapa.appendChild(b);
   });
 
-  // Seleção de personagem: carrosséis por categoria (setas no PC, arrasto no celular)
-  foto.onclick = () => {
-    const tela = document.createElement('div');
-    tela.className = 'gm-sel';
-    tela.innerHTML = `<button class="gm-fechar" type="button">Fechar</button><h1>Escolha o personagem</h1>`;
-    for (const cat of CATEGORIAS) {
-      const h = document.createElement('h2');
-      h.textContent = cat;
-      const car = document.createElement('div');
-      car.className = 'gm-car';
-      const trilho = document.createElement('div');
-      trilho.className = 'gm-trilho';
-      for (const d of PERSONAGENS.filter((p) => p.categoria === cat)) {
-        const it = document.createElement('button');
-        it.type = 'button';
-        it.className = 'gm-item';
-        it.setAttribute('aria-pressed', String(d.id === salvo.personagem));
-        it.innerHTML = `<img src="${rosto(d.id)}" alt="" />${d.nome}`; // sem loading=lazy
-        it.onclick = () => {
-          salvo.personagem = d.id;
-          mostrarPersonagem();
-          tela.remove();
-        };
-        trilho.appendChild(it);
-      }
-      const seta = (txt: string, dir: number) => {
-        const s = document.createElement('button');
-        s.type = 'button';
-        s.className = 'gm-seta';
-        s.textContent = txt;
-        s.setAttribute('aria-label', dir < 0 ? 'Anterior' : 'Próximo');
-        s.onclick = () => trilho.scrollBy({ left: dir * 240, behavior: 'smooth' });
-        return s;
-      };
-      car.append(seta('‹', -1), trilho, seta('›', 1));
-      tela.append(h, car);
-    }
-    tela.querySelector<HTMLButtonElement>('.gm-fechar')!.onclick = () => tela.remove();
-    raiz.appendChild(tela);
-  };
+  // Seleção de personagem (carrosséis por categoria; compartilhada com a pausa)
+  foto.onclick = () => abrirSelecaoPersonagem(raiz, salvo.personagem, (id) => { salvo.personagem = id; mostrarPersonagem(); });
 
   return new Promise((resolve) => {
     q<HTMLButtonElement>('.gm-entrar').onclick = () => {

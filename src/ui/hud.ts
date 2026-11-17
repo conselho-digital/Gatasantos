@@ -1,7 +1,7 @@
 import { COLETE_MAX, VIDA_MAX } from '../game/combat';
 
 const CSS = `
-.gh{position:fixed;inset:0;pointer-events:none;font:18px/1.3 system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px #000;
+.gh{position:fixed;inset:0;z-index:4;pointer-events:none;font:18px/1.3 system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px #000;
  padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
 .gh-mira{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;opacity:.9}
 .gh-mira::before,.gh-mira::after{content:"";position:absolute;background:#fff;box-shadow:0 0 2px #000}
@@ -29,6 +29,8 @@ const CSS = `
 .gh.toque .gh-feed{top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:50vw;font-size:16px}
 .gh.toque .gh-vel{bottom:auto;top:16px;font-size:28px}
 .gh.toque .gh-dica{display:none}
+.gh-eng{position:absolute;right:max(12px,env(safe-area-inset-right));top:48px;width:52px;height:52px;border-radius:50%;border:2px solid #fff6;background:#1b2535b3;color:#fff;font-size:26px;pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.gh.toque .gh-eng{top:max(12px,env(safe-area-inset-top));right:max(80px,env(safe-area-inset-right))}
 .gh-fps{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:18px;opacity:.8}
 `;
 
@@ -47,6 +49,7 @@ export class Hud {
   private placarEl: HTMLElement;
   private vel: HTMLElement;
   private dicaEl: HTMLElement;
+  private eng: HTMLElement;
 
   constructor(toque = false) {
     const st = document.createElement('style');
@@ -57,7 +60,7 @@ export class Hud {
       <div class="gh-mira"></div><div class="gh-mx"></div>
       <div class="gh-feed"></div>
       <div class="gh-aviso"></div>
-      <div class="gh-fps"></div><div class="gh-placar" hidden></div><div class="gh-vel" hidden></div><div class="gh-dica" hidden></div>
+      <div class="gh-fps"></div><div class="gh-placar" hidden></div><div class="gh-vel" hidden></div><div class="gh-dica" hidden></div><button class="gh-eng" type="button" aria-label="Pausa e configurações">⚙</button>
       <div class="gh-bar"><div class="gh-nv"></div>
         <div class="gh-barra gh-v"><i></i></div><div class="gh-barra gh-c"><i></i></div></div>
       <div class="gh-arma"></div>`;
@@ -74,6 +77,7 @@ export class Hud {
     this.placarEl = q('.gh-placar');
     this.vel = q('.gh-vel');
     this.dicaEl = q('.gh-dica');
+    this.eng = q('.gh-eng');
   }
 
   barras(vida: number, colete: number): void {
@@ -119,6 +123,11 @@ export class Hud {
     }
     this.placarEl.replaceChildren(tab);
     this.placarEl.hidden = false;
+  }
+
+  /** Botão de pausa (engrenagem). */
+  engrenagem(fn: () => void): void {
+    this.eng.onclick = fn;
   }
 
   /** Velocímetro em km/h (null esconde). */
