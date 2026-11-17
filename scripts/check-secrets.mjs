@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const padroes = [
-  /service_role/i,
+  /service_?role[\w]*\s*[=:]\s*['"]?[A-Za-z0-9._-]{20,}/i, // chave de serviço atribuída (a palavra sozinha em texto/docs é ok)
   /sk_live_[0-9a-zA-Z]+/,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /AKIA[0-9A-Z]{16}/,
