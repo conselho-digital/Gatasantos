@@ -277,3 +277,13 @@ para fora do carro, mira em "segurar" e câmera com o arrasto vertical ao contr�
   C com voz ligada a 40 m não conecta; 0 erros de página. Teste de MIC no layout de toque: 6 tamanhos sem sobreposição.
 - Limites: **círculo da voz no chão não foi desenhado**; sem teste com 8 conversas simultâneas nem em redes móveis reais; sem ducking dos outros sons sob a voz
   (o barramento `voz` já existe); sem opção de volume da voz nas configurações; iPhone antigo pode negar o microfone fora de HTTPS (o site é HTTPS).
+
+## Rodada: Mobile — câmera com o dedo do botão e volante por botões (pedido do dono)
+- **Arrastar a câmera segurando um botão**: o dedo que segura CORRER, TIRO, PULAR, ABAIXAR, pedais etc. também gira a câmera ao deslizar (mesma conta do arrasto na tela;
+  `semCamera` só nos botões de volante). Testado: dedo 1 no joystick + dedo 2 em CORRER arrastando: yaw 1,57 → 1,40 e o personagem correu (9 m em 1,2 s).
+- **Dirigindo no celular: sem joystick.** O joystick some e entram **◀ ▶ grandes** no canto esquerdo (LUZ da viatura acima deles). Direita: ACEL. grande, FREIO, MÃO, BUZINA,
+  **EMPINAR (só na moto)** e SAIR/MIC/⚙ no topo. Testado: ACEL. + ▶ → heading 1,57 → 0,19 (vira à direita); ACEL. + ◀ → 0,16 → 0,37 (esquerda); EMPINAR não aparece no carro.
+- **Empinar a moto** (`vehicle.ts`, Shift no PC / botão EMPINAR): acima de 3 m/s e com o acelerador, a roda da frente sobe até 0,6 rad (34°) em torno do eixo traseiro
+  (parte móvel `pivo` separada do `grupo`); direção fica mais dura (× 0,72) enquanto empina; solta sozinha ao largar o botão ou abaixo de 3 m/s; o piloto empina junto.
+  Testado a 27,8 m/s: 0,6 rad segurando, 0 ao soltar.
+- Layout: teste dos 6 tamanhos (a pé, perto do carro, dirigindo viatura, dirigindo moto, pausa, garagem): tudo dentro da tela, sem sobreposição, menor botão 44–56 px.

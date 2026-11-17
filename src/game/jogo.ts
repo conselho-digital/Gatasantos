@@ -357,6 +357,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       acel: acelIn - (tecla('KeyS') ? 1 : 0),
       dir: (tecla('KeyA') ? 1 : 0) - (tecla('KeyD') ? 1 : 0),
       mao: tecla('Space'),
+      empinar: tecla('ShiftLeft'),
     }, pos);
     if (modoAnt === 'saindo' && est.modo === 'a_pe') { pos.x = conducao.saida.x; pos.z = conducao.saida.z; }
     if (modoAnt !== 'a_pe' && est.modo === 'a_pe') publicarVeiculo(); // saiu: o veículo fica onde está
@@ -474,7 +475,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       giro = est.corpo.giro;
     } else boneco.raiz.position.set(pos.x, altura, pos.z);
     boneco.raiz.rotation.y = giro;
-    boneco.raiz.rotation.x = caido ? -Math.PI / 2 : 0;
+    boneco.raiz.rotation.x = caido ? -Math.PI / 2 : emVeic && conducao.veiculo ? -conducao.veiculo.empinada : 0; // piloto empina junto
     if (caido) boneco.raiz.position.y += 0.12;
 
     const mexe = !!(x || y) || !!andarPara;
@@ -549,6 +550,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       dirigindo: conducao.dirigindo,
       pertoVeiculo: !!conducao.veiculo && conducao.modo === 'a_pe' && Math.hypot(conducao.veiculo.x - pos.x, conducao.veiculo.z - pos.z) < 7,
       veiculoViatura: conducao.veiculo?.modelo.tipo === 'viatura',
+      veiculoMoto: !!conducao.veiculo?.ehMoto,
       corpoACorpo: combate.arma.corpoACorpo,
     });
     const perto = conducao.veiculo && conducao.modo === 'a_pe' && !preso && Math.hypot(conducao.veiculo.x - pos.x, conducao.veiculo.z - pos.z) < 7;

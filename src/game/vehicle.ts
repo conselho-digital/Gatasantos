@@ -135,6 +135,7 @@ export interface EntradaVeiculo {
   acel: number; // -1..1 (S negativo = freio/ré)
   dir: number; // -1..1 (positivo = esquerda)
   mao: boolean; // freio de mão
+  empinar?: boolean; // moto: empina a roda da frente (Shift) acima de 3 m/s
 }
 
 export interface Impacto {
@@ -148,6 +149,10 @@ export interface Impacto {
  */
 export class Veiculo {
   readonly grupo: THREE.Group;
+  /** Parte que inclina (curva, empinada, tombo); `grupo` só leva posição e direção. */
+  private pivo = new THREE.Group();
+  /** Ângulo da empinada (rad, 0 = rodas no chão). */
+  empinada = 0;
   private rodas: THREE.Object3D[];
   private mat: THREE.MeshLambertMaterial;
   private body: THREE.Mesh;
@@ -169,6 +174,8 @@ export class Veiculo {
   constructor(readonly modelo: ModeloVeiculo, corIdx: number) {
     const m = montar(modelo, CORES[corIdx % CORES.length].cor);
     this.grupo = m.grupo;
+    while (this.grupo.children.length) this.pivo.add(this.grupo.children[0]);
+    this.grupo.add(this.pivo);
     this.rodas = m.rodas;
     this.mat = m.mat;
     this.body = m.body;
@@ -190,9 +197,17 @@ export class Veiculo {
   assento(out: THREE.Vector3): THREE.Vector3 {
     const fx = Math.sin(this.h), fz = Math.cos(this.h), rx = -fz, rz = fx;
     const lado = this.ehMoto ? 0 : -0.38; // esquerda = −direita
-    const recuo = this.ehMoto ? -0.15 : -0.05;
+    let recuo = this.ehMoto ? -0.15 : -0.05;
     // carro: banco afundado na carroceria (0,22 m abaixo da rua) para a cabeça ficar abaixo do teto; moto: sentado em cima
-    return out.set(this.x + fx * recuo + rx * lado, this.ehMoto ? 0.12 : -0.22, this.z + fz * recuo + rz * lado);
+    let y = this.ehMoto ? 0.12 : -0.22;
+    if (this.ehMoto && this.empinada > 0.001) {
+      // empinando: o piloto gira junto, em volta do eixo traseiro
+      const a = this.empinada, zr = this.modelo.entreEixos / 2;
+      const yr = y - RAIO_RODA, zrr = recuo + zr;
+      y = RAIO_RODA + yr * Math.cos(a) + zrr * Math.sin(a);
+      recuo = -zr + (-yr * Math.sin(a) + zrr * Math.cos(a));
+    }
+    return out.set(this.x + fx * recuo + rx * lado, y, this.z + fz * recuo + rz * lado);
   }
 
   /** Ponto ao lado da porta: lado -1 = esquerda do veículo, +1 = direita. */
@@ -223,7 +238,11 @@ export class Veiculo {
     if (e.mao) this.v -= Math.sign(this.v) * Math.min(Math.abs(this.v), 14 * dt);
 
     // direção firme em alta: max(0,4, 1 − v/45)
-    const maxEster = 0.62 * Math.max(0.4, 1 - Math.abs(this.v) / 45);
+    // empinar a moto (Shift): acima de 3 m/s e com o acelerador; solta sozinha abaixo de 3 m/s ou ao soltar
+    const quer = !!e.empinar && this.ehMoto && !this.caido && this.v > 3 && e.acel > 0;
+    this.empinada += ((quer ? 0.6 : 0) - this.empinada) * Math.min(1, dt * (quer ? 4 : 6));
+    if (this.empinada < 0.002) this.empinada = 0;
+    const maxEster = (this.empinada > 0.1 ? 0.45 : 1) * 0.62 * Math.max(0.4, 1 - Math.abs(this.v) / 45);
     const alvo = e.dir * maxEster;
     this.esterco += (alvo - this.esterco) * Math.min(1, dt * 8);
     const giro = (this.v / m.entreEixos) * Math.tan(this.esterco);
@@ -282,8 +301,16 @@ export class Veiculo {
     // moto: inclina nas curvas; tombada fica deitada
     const alvo = this.caido ? 1.35 : this.ehMoto ? -this.esterco * Math.min(1, Math.abs(this.v) / 14) * 0.9 : 0;
     this.inclina += (alvo - this.inclina) * Math.min(1, dt * 8);
-    this.grupo.rotation.z = this.inclina;
-    this.grupo.position.y = this.caido ? 0.18 : 0;
+    this.pivo.rotation.z = this.inclina;
+    this.pivo.position.set(0, this.caido ? 0.18 : 0, 0);
+    // empinada: gira em volta do eixo traseiro (a roda de trás fica no chão)
+    const a = this.empinada;
+    this.pivo.rotation.x = -a;
+    if (a > 0.001) {
+      const zr = this.modelo.entreEixos / 2;
+      this.pivo.position.y += RAIO_RODA - (RAIO_RODA * Math.cos(a) + zr * Math.sin(a));
+      this.pivo.position.z = -zr - (-RAIO_RODA * Math.sin(a) - zr * Math.cos(a));
+    }
     // viatura: luzes piscando (vermelho/azul, ciclo 0,8 s)
     if (this.barra) {
       this.tLuz += dt;

@@ -24,6 +24,7 @@ export interface EstadoToque {
   dirigindo: boolean;
   pertoVeiculo: boolean; // dá para entrar (F)
   veiculoViatura: boolean;
+  veiculoMoto: boolean;
   corpoACorpo: boolean; // arma de mão: esconde mira
 }
 
@@ -124,12 +125,15 @@ export function criarControlesToque(): ControlesToque {
     toque?: () => void; // um aperto
     grupo?: string; // ligados entre si (segurar)
     alternar?: (ligado: boolean) => void; // um toque liga, outro desliga (mira)
+    pequeno?: boolean; // rótulo longo: fonte menor
+    semCamera?: boolean; // por padrão, arrastar com o dedo que segura o botão também gira a câmera
     visivel?: string; // modo em que aparece
   }
   const botao = (o: Opcoes): HTMLElement => {
     const b = document.createElement('div');
     b.className = `gt-b ${o.classe ?? ''}`;
     b.textContent = o.rotulo;
+    if (o.pequeno) b.style.fontSize = 'clamp(8px,2.3vh,11px)';
     const t = o.tam ?? 'var(--b)';
     b.style.width = b.style.height = t;
     if (o.r) b.style.right = `calc(var(--mr) + ${o.r})`;
@@ -154,6 +158,18 @@ export function criarControlesToque(): ControlesToque {
       else { b.classList.add('on'); o.segurar?.(true); }
       o.toque?.();
     });
+    // Arrastar o dedo que segura o botão (CORRER, TIRO, pedais...) também gira a câmera
+    const dedoBtn = new Map<number, { x: number; y: number }>();
+    b.addEventListener('pointerdown', (e) => { dedoBtn.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
+    b.addEventListener('pointermove', (e) => {
+      const d = dedoBtn.get(e.pointerId);
+      if (!d || o.alternar || o.semCamera) return;
+      injetarGiro((e.clientX - d.x) * 1.4, (e.clientY - d.y) * 1.4);
+      d.x = e.clientX;
+      d.y = e.clientY;
+    });
+    b.addEventListener('pointerup', (e) => dedoBtn.delete(e.pointerId));
+    b.addEventListener('pointercancel', (e) => dedoBtn.delete(e.pointerId));
     const solta = (e: PointerEvent) => {
       if (o.alternar) return; // alternar: soltar não faz nada
       if (g) { g.delete(e.pointerId); marcaGrupo(o.grupo!, g.size > 0); o.segurar?.(g.size > 0); }
@@ -200,11 +216,17 @@ export function criarControlesToque(): ControlesToque {
   botao({ rotulo: 'FREIO', r: `calc(${B} + ${g})`, b: '0px', tam: `calc(${b} * 1.15)`, segurar: tecla('KeyS'), visivel: 'dirigindo' });
   botao({ rotulo: 'MÃO', r: `calc(${B} + ${g})`, b: `calc(${b} * 1.15 + ${g})`, segurar: tecla('Space'), visivel: 'dirigindo' });
   botao({ rotulo: 'BUZINA', r: `calc((${B} - ${b}) / 2)`, b: `calc(${B} + ${g})`, segurar: tecla('KeyH'), visivel: 'dirigindo' });
-  botao({ rotulo: 'LUZ', l: `calc(${J} + ${g})`, b: '0px', toque: () => injetarToque('KeyE'), visivel: 'viatura' });
+  // Volante: botões ◀ ▶ (no lugar do joystick) — e EMPINAR só na moto
+  botao({ rotulo: '◀', l: '0px', b: '0px', tam: B, segurar: tecla('KeyA'), semCamera: true, visivel: 'dirigindo' });
+  botao({ rotulo: '▶', l: `calc(${B} + ${g})`, b: '0px', tam: B, segurar: tecla('KeyD'), semCamera: true, visivel: 'dirigindo' });
+  botao({ rotulo: 'EMPINAR', r: `calc(${B} + ${b} * 1.15 + 2 * ${g})`, b: '0px', segurar: tecla('ShiftLeft'), pequeno: true, visivel: 'moto' });
+  botao({ rotulo: 'LUZ', l: '0px', b: `calc(${B} + ${g})`, toque: () => injetarToque('KeyE'), visivel: 'viatura' });
   botao({ rotulo: 'SAIR', r: `calc(${b} + ${g})`, t: '0px', tam: b, classe: 'vermelho', toque: () => injetarToque('KeyF'), visivel: 'dirigindo' });
 
   const estado = (e: EstadoToque) => {
     dirigindo = e.dirigindo;
+    joy.style.display = e.dirigindo ? 'none' : ''; // dirigindo: sem joystick, só botões ◀ ▶
+    if (e.dirigindo && joyId !== -1) soltaJoy();
     // mira alternada não fica ligada ao dirigir nem com arma de mão
     if ((e.dirigindo || e.corpoACorpo) && alternados.get('mira')) {
       alternados.set('mira', false);
@@ -218,12 +240,13 @@ export function criarControlesToque(): ControlesToque {
         (m === 'pe' && !e.dirigindo) ||
         (m === 'dirigindo' && e.dirigindo) ||
         (m === 'viatura' && e.dirigindo && e.veiculoViatura) ||
+        (m === 'moto' && e.dirigindo && e.veiculoMoto) ||
         (m === 'porta' && e.pertoVeiculo && !e.dirigindo)
       );
       if (e.corpoACorpo && x.dataset.grupo === 'mira') x.hidden = true;
     }
   };
-  estado({ dirigindo: false, pertoVeiculo: false, veiculoViatura: false, corpoACorpo: false });
+  estado({ dirigindo: false, pertoVeiculo: false, veiculoViatura: false, veiculoMoto: false, corpoACorpo: false });
 
   return {
     estado,
