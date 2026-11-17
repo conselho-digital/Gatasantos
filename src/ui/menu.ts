@@ -87,7 +87,7 @@ export function mostrarMenu(): Promise<ConfigJogo> {
       <div><label>Equipe</label><div class="gm-linha gm-equipes"></div></div>
       <div><label>Mapa</label><div class="gm-linha gm-mapas"></div></div>
       <button class="gm-entrar" type="button">Entrar no jogo</button>
-      <div class="gm-aviso">Login com Google chega numa próxima etapa.</div>
+      <div class="gm-aviso">Sem login: só o seu nome. Quem estiver no mapa vê você.</div>
     </div>`;
   document.body.appendChild(raiz);
 
@@ -178,7 +178,9 @@ export function mostrarMenu(): Promise<ConfigJogo> {
 
   return new Promise((resolve) => {
     q<HTMLButtonElement>('.gm-entrar').onclick = () => {
-      const nome = [...campoNome.value].filter((c) => c.charCodeAt(0) > 31 && c.charCodeAt(0) !== 127).join('').trim().slice(0, 16) || 'Jogador';
+      const bruto = [...campoNome.value].filter((c) => c.charCodeAt(0) > 31 && c.charCodeAt(0) !== 127).join('').trim().slice(0, 16);
+      if (!bruto) { campoNome.focus(); campoNome.style.borderColor = '#ef4444'; campoNome.placeholder = 'Digite seu nome'; return; }
+      const nome = bruto;
       salvo.nome = nome;
       gravar(salvo);
       raiz.remove();

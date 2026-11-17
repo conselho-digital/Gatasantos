@@ -20,6 +20,8 @@ const CSS = `
 .gh-feed div{background:#0007;border-radius:8px;padding:4px 10px;margin-bottom:4px;animation:ghf 6s forwards}
 @keyframes ghf{0%,85%{opacity:1}100%{opacity:0}}
 .gh-aviso{position:absolute;left:0;right:0;top:20%;text-align:center;font:700 30px system-ui}
+.gh-placar{position:absolute;left:50%;top:14%;transform:translateX(-50%);min-width:min(420px,90vw);background:#000c;border-radius:12px;padding:10px 16px}
+.gh-placar table{width:100%;border-collapse:collapse}.gh-placar td,.gh-placar th{padding:4px 8px;text-align:left}.gh-placar .eu{color:#ffd400}
 .gh-fps{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:18px;opacity:.8}
 `;
 
@@ -35,6 +37,7 @@ export class Hud {
   private mx: HTMLElement;
   private fps: HTMLElement;
   private tMx = 0;
+  private placarEl: HTMLElement;
 
   constructor() {
     const st = document.createElement('style');
@@ -45,7 +48,7 @@ export class Hud {
       <div class="gh-mira"></div><div class="gh-mx"></div>
       <div class="gh-feed"></div>
       <div class="gh-aviso"></div>
-      <div class="gh-fps"></div>
+      <div class="gh-fps"></div><div class="gh-placar" hidden></div>
       <div class="gh-bar"><div class="gh-nv"></div>
         <div class="gh-barra gh-v"><i></i></div><div class="gh-barra gh-c"><i></i></div></div>
       <div class="gh-arma"></div>`;
@@ -59,6 +62,7 @@ export class Hud {
     this.mira = q('.gh-mira');
     this.mx = q('.gh-mx');
     this.fps = q('.gh-fps');
+    this.placarEl = q('.gh-placar');
   }
 
   barras(vida: number, colete: number): void {
@@ -90,6 +94,20 @@ export class Hud {
 
   texto(t: string): void {
     this.aviso.textContent = t;
+  }
+
+  /** Placar (Tab). `null` esconde. Nomes entram como texto (nunca HTML). */
+  placar(linhas: { nome: string; abates: number; mortes: number; eu: boolean }[] | null): void {
+    if (!linhas) { this.placarEl.hidden = true; return; }
+    const tab = document.createElement('table');
+    tab.innerHTML = '<tr><th>Jogador</th><th>Abates</th><th>Mortes</th></tr>';
+    for (const l of linhas) {
+      const tr = tab.insertRow();
+      if (l.eu) tr.className = 'eu';
+      for (const v of [l.nome, String(l.abates), String(l.mortes)]) tr.insertCell().textContent = v;
+    }
+    this.placarEl.replaceChildren(tab);
+    this.placarEl.hidden = false;
   }
 
   contadorFps(fps: number): void {

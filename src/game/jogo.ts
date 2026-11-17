@@ -8,7 +8,9 @@ import { achar, type Equipe } from './characters';
 import { criarAnelEquipe } from './teams';
 import { Animador, medirPasso, TIME_SCALE, VEL_JOGO, type Clip } from './anim';
 import { atualizarCamera, distanciaMinimaDeCaixas, novoEstadoCamera, posicaoDesejada } from './camera';
-import { Combate, COLETE_MAX, VIDA_MAX } from './combat';
+import { Combate, COLETE_MAX, VIDA_MAX, type Alvo, type Alvos } from './combat';
+import { Online } from './online';
+import { limparNome } from '../net/clean';
 import { criarModeloArma, type ArmaNaMao } from './gunmodel';
 import { Pedestres } from './npcs';
 import { ouvirRuido } from './noise';
@@ -85,15 +87,43 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   }
   let proxTracer = 0;
 
-  const combate = new Combate(npcs, {
+  const desenharTracer = (de: THREE.Vector3, ate: THREE.Vector3) => {
+    const t = tracers[proxTracer++ % tracers.length];
+    const p = t.linha.geometry.attributes.position as THREE.BufferAttribute;
+    p.setXYZ(0, de.x, de.y, de.z);
+    p.setXYZ(1, ate.x, ate.y, ate.z);
+    p.needsUpdate = true;
+    t.linha.visible = true;
+    t.t = 0.06;
+  };
+
+  // Rede: sessão no Supabase Realtime (sem login; só o nome)
+  const maxSessao = Number(params.get('max')) || undefined;
+  const online = new Online(
+    scene,
+    { id: crypto.randomUUID(), nome: limparNome(cfg.nome), pers: cfg.personagem, eq: { n: cfg.equipe.nome, c1: cfg.equipe.c1, c2: cfg.equipe.c2 } },
+    {
+      feed: (m) => hud.feed(m),
+      tracer: desenharTracer,
+      receberDano: (v) => combate.danoEmMim(v),
+      meuEstado: () => ({ x: pos.x, y: altura, z: pos.z }),
+    },
+  );
+
+  // Tudo que pode ser acertado: pedestres + jogadores remotos (o mais perto vence)
+  const remotosAlvo = online.alvosRemotos();
+  const alvos: Alvos = {
+    testarRaio(ox, oy, oz, dx, dy, dz, max): Alvo | null {
+      const a = npcs.testarRaio(ox, oy, oz, dx, dy, dz, max), b = remotosAlvo.testarRaio(ox, oy, oz, dx, dy, dz, max);
+      return a && (!b || a.t <= b.t) ? a : b;
+    },
+    maisPerto: (x, z, raio) => remotosAlvo.maisPerto(x, z, raio) ?? npcs.maisPerto(x, z, raio),
+  };
+
+  const combate = new Combate(alvos, {
     tracer(de, ate) {
-      const t = tracers[proxTracer++ % tracers.length];
-      const p = t.linha.geometry.attributes.position as THREE.BufferAttribute;
-      p.setXYZ(0, de.x, de.y, de.z);
-      p.setXYZ(1, ate.x, ate.y, ate.z);
-      p.needsUpdate = true;
-      t.linha.visible = true;
-      t.t = 0.06;
+      desenharTracer(de, ate);
+      online.enviarTiro(de, ate, combate.arma.silenciada);
     },
     aviso: (m) => hud.feed(m),
     marcador: (cab, morreu) => hud.marcador(cab, morreu),
@@ -226,6 +256,18 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
     });
     cliqueAntes = botaoMouse(0);
 
+    // Rede: jogadores remotos (interpolados) e o meu estado
+    online.remotos.atualizar(dt);
+    if (online.ativo) {
+      online.enviarMove(dt, {
+        x: pos.x, y: altura, z: pos.z, r: giro, c: clip,
+        hp: Math.round((combate.vida / VIDA_MAX) * 100),
+        a: ARMAS.findIndex((a) => a.id === combate.arma.id), p: cam.pitch,
+        l: olhando, rl: combate.recarregando, pr: combate.protecao > 0,
+      }, !mexe && altura <= 0);
+    }
+    if (tecla('Tab')) hud.placar(online.placar({ nome: cfg.nome, mortes: combate.mortes, abates: combate.abates + online.abates })); else hud.placar(null);
+
     // Pedestres, traçadores, HUD
     npcs.atualizar(dt, pos.x, pos.z);
     for (const t of tracers) {
@@ -242,6 +284,10 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
   }
   let cliqueAntes = false;
   limparToques();
+  addEventListener('keydown', (e) => { if (e.code === 'Tab') e.preventDefault(); });
+
+  // Entra na sessão online (assíncrono: o jogo já roda sozinho enquanto conecta)
+  if (params.get('offline') !== '1') void online.conectar(params.get('room') ?? cfg.mapa, maxSessao);
 
   renderer.setAnimationLoop((agora: number) => {
     timer.update(agora);
@@ -265,7 +311,9 @@ export function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): void {
       npcs: () => npcs.resumo(),
       npcsObj: npcs,
       mouse: forcarBotao,
-      remotes: () => [],
+      remotes: () => [...online.remotos.mapa.values()].map((r) => ({ id: r.info.id, nome: r.info.nome, x: +r.x.toFixed(2), z: +r.z.toFixed(2), hp: r.hp, visivel: r.p.raiz.visible })),
+      online,
+      eu: online.eu,
       pickups: () => [],
       tabelaTTK: (colete = 0) => tabelaTempoParaMatar([60, VIDA_MAX], colete),
       cadencia: (id: ArmaId, fps: number, s = 10) => ({ tiros: simularCadencia(armaPorId(id).gap, fps, s), esperado: s / armaPorId(id).gap }),

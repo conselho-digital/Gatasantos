@@ -106,3 +106,29 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Limites: pitch inicial 0,28 mira ~5 m à frente no chão (o jogador ajusta com o mouse; avaliar pitch menor);
   sem clipes de luta/queda/reação (NPC cai por rotação simples e foge ao ser atingido); com arma na mão as pernas andam para a
   frente mesmo ao andar de lado; braços da arma por pose fixa (sem IK); sem som (etapa 9); celular sem botões (etapa 13).
+
+## Rodada: Etapa 6 — Multiplayer (Supabase Realtime, SEM login)
+- Projeto Supabase novo **`gatasantos`** (ref `micrzdzbhglvskrdboyj`, eu-west-1), vazio: o multiplayer só usa Realtime (sem tabelas).
+  `.env.local` (fora do git) e variáveis `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (chave **publishable**, pública) também
+  configuradas na Vercel (production/preview/development). `.env.example` documenta. Nunca pôr chave secreta (`service_role`).
+- Decisão do dono: **sem login Google**; o menu só pede o **nome** (obrigatório). Sem login não há ranking global, compras
+  nem admin (dependem de identidade/RLS): ficam para quando houver login.
+- `net/supabase.ts` (cliente), `net/sala.ts` (canal `arena:<mapa>`, `-2`, `-3`… até 12; **máx. 30**, `?max=N` no dev; ouvintes
+  de presence ANTES de `subscribe()`; espera a 1ª lista até 2 s; sessão cheia tenta a próxima), `net/clean.ts` (toda mensagem
+  passa por `clean*`), `net/plausible.ts`, `game/online.ts`, `game/remote.ts`, placar por Tab.
+- Presence: `{id, nome, pers, eq}`; broadcast `move` ~12/s (~4/s parado): posição, giro, clipe (nome), hp %, arma, pitch, levantada,
+  recarregando, protegido. Remoto interpola ~100 ms atrás, repete o clipe pelo nome, tem nome em textura de canvas, anel e faixa
+  da equipe; `dispose()` libera texturas/geometrias. Eventos: `tiro` (traçador), `dano`, `kill`.
+- Dano: o atirador calcula o acerto e manda `dano`; a vítima valida com `plausible` (atirador vivo, a ≤ 8 m de onde diz que
+  disparou, raio passa pelo meu corpo com margem 0,5 m, sem parede, alcance + 5 m, cadência × 0,6 por balde de crédito) e
+  **recalcula o valor pela arma** (não confia no enviado). Quem morre manda `kill`. Abate só conta se acertei a vítima nos
+  últimos 15 s, 1 por vítima a cada 3 s.
+- Params: `?room=<nome>` (canal de teste), `?max=2`, `?offline=1`. Dev: `__game.online`, `__game.remotes()`, `__game.mouse(botão,bool)`.
+- Testes (2–3 abas, Playwright, relógio do jogo): 2 abas se veem e B acompanha A andando; 3ª aba com `?max=2` cai na **sessão 2**;
+  tiro de A em B tira 40 de vida (2 acertos de 20); B morre, `kill` chega, A conta 1 abate, B renasce com 56 s de proteção;
+  ao fechar A, B remove o remoto (27 personagens na cena = 26 NPCs + eu, sem vazamento); 0 erros de página.
+  Dano forjado recusado: origem longe do atirador, raio que não passa pelo corpo, rajada instantânea (13 de 20 recusadas por cadência).
+- Limites: **o canal Realtime é público** e não há login, então dá para forjar mensagens (o jogo é casual; as validações só
+  barram o óbvio). Anti-cheat de verdade exige canais privados com RLS em `realtime.messages` e validação no servidor.
+  Sem voz (etapa 10), sem veículos remotos (etapa 8), sem sincronizar pedestres (são locais), troca de equipe ao vivo só recria o remoto.
+  Nome repetido é permitido. Presença não tem teste de 30 jogadores (só `max=2`).

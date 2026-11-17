@@ -5,6 +5,7 @@ import { Animador, VEL_JOGO } from './anim';
 import { LIMITE } from './city';
 import { dentroDeCaixa, empurrarCirculo, pontoLivre } from './collision';
 import { raioCilindro, raioEsfera, raioMundo } from './raycast';
+import type { Alvo, Alvos } from './combat';
 
 /** Pedestres locais (seção 6.9): cada jogador vê os seus, nada vai pela rede. */
 type Estado = 'andar' | 'esperar' | 'fugir' | 'esconder' | 'morto';
@@ -62,7 +63,7 @@ class Pedestre {
   }
 }
 
-export class Pedestres {
+export class Pedestres implements Alvos {
   readonly lista: Pedestre[] = [];
   private jogador = { x: 0, z: 0 };
   private rnd = rng(7);
@@ -180,7 +181,7 @@ export class Pedestres {
   }
 
   /** Primeiro pedestre vivo atingido pelo raio. */
-  testarRaio(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, max: number) {
+  testarRaio(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, max: number): Alvo | null {
     let melhor: { t: number; n: Pedestre; cabeca: boolean } | null = null;
     for (const n of this.lista) {
       if (!n.vivo() || !n.p.raiz.visible) continue;
@@ -190,18 +191,20 @@ export class Pedestres {
       const t = Math.min(th, tc);
       if (t !== Infinity && (!melhor || t < melhor.t)) melhor = { t, n, cabeca: th <= tc };
     }
-    return melhor;
+    if (!melhor) return null;
+    const alvo = melhor.n;
+    return { t: melhor.t, cabeca: melhor.cabeca, aplicar: (dano, ctx) => this.dano(alvo, dano, ctx.px, ctx.pz) };
   }
 
   /** Pedestre vivo mais perto de (x,z) dentro de `raio` (soco). */
-  maisPerto(x: number, z: number, raio: number): Pedestre | null {
+  maisPerto(x: number, z: number, raio: number) {
     let m: Pedestre | null = null, md = raio;
     for (const n of this.lista) {
       if (!n.vivo()) continue;
       const d = Math.hypot(n.x - x, n.z - z);
       if (d < md) { md = d; m = n; }
     }
-    return m;
+    return m ? { aplicar: (dano: number, ctx: { px: number; pz: number }) => this.dano(m!, dano, ctx.px, ctx.pz) } : null;
   }
 
   atualizar(dt: number, jx: number, jz: number): void {

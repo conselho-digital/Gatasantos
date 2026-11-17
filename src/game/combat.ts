@@ -2,7 +2,28 @@ import * as THREE from 'three';
 import { ARMAS, armaPorId, DISPERSAO_MIRANDO, DISPERSAO_SEM_MIRAR, GOLPE_ATRASO, LEVANTADA, RAIO_RUIDO, RAIO_RUIDO_SILENCIADO, RECARGA, type Arma, type ArmaId } from './weapons';
 import { emitirRuido } from './noise';
 import { raioMundo } from './raycast';
-import type { Pedestres } from './npcs';
+
+/** Dados do tiro entregues ao alvo (a rede usa para a vítima validar). */
+export interface ContextoTiro {
+  ox: number; oy: number; oz: number; // cano
+  dx: number; dy: number; dz: number; // direção unitária
+  alcance: number;
+  arma: Arma;
+  px: number; pz: number; // posição do atirador
+}
+
+export interface Alvo {
+  t: number;
+  cabeca: boolean;
+  /** Aplica o dano. Devolve true se o alvo morreu (a rede não sabe: a vítima decide). */
+  aplicar(dano: number, ctx: ContextoTiro): boolean;
+}
+
+/** Tudo que pode ser acertado: pedestres e jogadores remotos. */
+export interface Alvos {
+  testarRaio(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, max: number): Alvo | null;
+  maisPerto(x: number, z: number, raio: number): { aplicar(dano: number, ctx: ContextoTiro): boolean } | null;
+}
 
 export const VIDA_MAX = 400;
 export const COLETE_MAX = 100;
@@ -58,7 +79,7 @@ export class Combate {
   private golpeX = 0;
   private golpeZ = 0;
 
-  constructor(private npcs: Pedestres, private g: Ganchos) {
+  constructor(private alvos: Alvos, private g: Ganchos) {
     for (const a of ARMAS) this.municao.set(a.id, { pente: a.pente, reserva: a.reserva });
   }
 
@@ -71,8 +92,8 @@ export class Combate {
   }
 
   /** Dano em mim: colete absorve 60% enquanto durar. Respeita a proteção. */
-  danoEmMim(valor: number): void {
-    if (this.morto > 0 || this.protecao > 0) return;
+  danoEmMim(valor: number): boolean {
+    if (this.morto > 0 || this.protecao > 0) return false;
     const abs = Math.min(this.colete, valor * 0.6);
     this.colete -= abs;
     this.vida -= valor - abs;
@@ -82,7 +103,9 @@ export class Combate {
       this.mortes++;
       this.recarga = 0;
       this.g.aviso('Você morreu');
+      return true;
     }
+    return false;
   }
 
   trocar(id: ArmaId): void {
@@ -170,9 +193,10 @@ export class Combate {
 
   private acertarGolpe(): void {
     // pedestre à frente (cone), dentro do alcance do punho
-    const alvo = this.npcs.maisPerto(this.golpeX + Math.sin(this.golpeYaw) * 0.8, this.golpeZ + Math.cos(this.golpeYaw) * 0.8, this.arma.alcance - 0.6);
+    const alvo = this.alvos.maisPerto(this.golpeX + Math.sin(this.golpeYaw) * 0.8, this.golpeZ + Math.cos(this.golpeYaw) * 0.8, this.arma.alcance - 0.6);
     if (!alvo) return;
-    const morreu = this.npcs.dano(alvo, this.arma.dano, this.golpeX, this.golpeZ);
+    const ctx: ContextoTiro = { ox: this.golpeX, oy: 1.2, oz: this.golpeZ, dx: Math.sin(this.golpeYaw), dy: 0, dz: Math.cos(this.golpeYaw), alcance: this.arma.alcance, arma: this.arma, px: this.golpeX, pz: this.golpeZ };
+    const morreu = alvo.aplicar(this.arma.dano, ctx);
     if (morreu) this.abates++;
     this.g.marcador(false, morreu);
   }
@@ -195,7 +219,7 @@ export class Combate {
 
     // 1) raio da câmera: onde a mira cai
     let t = a.alcance;
-    const tp = this.npcs.testarRaio(_o.x, _o.y, _o.z, _d.x, _d.y, _d.z, a.alcance);
+    const tp = this.alvos.testarRaio(_o.x, _o.y, _o.z, _d.x, _d.y, _d.z, a.alcance);
     const tw = raioMundo(_o.x, _o.y, _o.z, _d.x, _d.y, _d.z, a.alcance);
     if (tw < t) t = tw;
     if (tp && tp.t < t) t = tp.t;
@@ -209,12 +233,13 @@ export class Combate {
     _d.divideScalar(dist);
     const alcance2 = Math.min(a.alcance, dist + 0.5);
     const tw2 = raioMundo(_m.x, _m.y, _m.z, _d.x, _d.y, _d.z, alcance2);
-    const tp2 = this.npcs.testarRaio(_m.x, _m.y, _m.z, _d.x, _d.y, _d.z, alcance2);
+    const tp2 = this.alvos.testarRaio(_m.x, _m.y, _m.z, _d.x, _d.y, _d.z, alcance2);
     let fim = Math.min(alcance2, tw2);
     if (tp2 && tp2.t <= fim) {
       fim = tp2.t;
       const dano = a.dano * (tp2.cabeca ? a.cabeca : 1);
-      const morreu = this.npcs.dano(tp2.n, dano, e.px, e.pz);
+      const ctx: ContextoTiro = { ox: _m.x, oy: _m.y, oz: _m.z, dx: _d.x, dy: _d.y, dz: _d.z, alcance: alcance2, arma: a, px: e.px, pz: e.pz };
+      const morreu = tp2.aplicar(dano, ctx);
       if (morreu) this.abates++;
       this.g.marcador(tp2.cabeca, morreu);
     }
