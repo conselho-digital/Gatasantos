@@ -17,6 +17,11 @@ export interface EstadoCamera {
   yaw: number;
   pitch: number;
   perto: boolean; // tecla G
+  /** Dirigindo: distância e ombro próprios (0 = câmera atrás do veículo). */
+  distOverride?: number;
+  ombroOverride?: number;
+  /** Altura do pivô (m); padrão = altura da cabeça. */
+  alturaOverride?: number;
 }
 
 export function novoEstadoCamera(): EstadoCamera {
@@ -75,11 +80,11 @@ let _temSuave = false;
 /** Posição desejada da câmera, já com recuo por colisão e empurrão. */
 export function posicaoDesejada(px: number, py: number, pz: number, est: EstadoCamera, mirando = false, out = new THREE.Vector3()) {
   const k = est.perto ? 0.5 : 1;
-  const dist = (mirando ? 1.35 : CAM.distancia) * k;
-  const ombro = (mirando ? 0.55 : CAM.ombro) * k;
+  const dist = est.distOverride ?? (mirando ? 1.35 : CAM.distancia) * k;
+  const ombro = est.ombroOverride ?? (mirando ? 0.55 : CAM.ombro) * k;
   const fx = Math.sin(est.yaw), fz = Math.cos(est.yaw);
   const rx = -fz, rz = fx;
-  _piv.set(px + rx * ombro, py + CAM.altura, pz + rz * ombro);
+  _piv.set(px + rx * ombro, py + (est.alturaOverride ?? CAM.altura), pz + rz * ombro);
   const cp = Math.cos(est.pitch), sp = Math.sin(est.pitch);
   _dir.set(-fx * cp, sp, -fz * cp); // do pivô para a câmera
   // Recua ao longo do raio até a primeira caixa engordada.

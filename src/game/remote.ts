@@ -7,6 +7,7 @@ import { criarModeloArma, type ArmaNaMao } from './gunmodel';
 import { ARMAS } from './weapons';
 import type { Mover, PresencaJogador } from '../net/clean';
 import { raioCilindro, raioEsfera } from './raycast';
+import { MODELOS, Veiculo } from './vehicle';
 
 const ATRASO = 100; // ms de buffer de interpolação
 const MAX_SNAPS = 24;
@@ -48,6 +49,10 @@ export class RemotePlayer {
   private naMao: ArmaNaMao | null = null;
   private armaCod = -1;
   private etiqueta: THREE.Sprite;
+  private parado: Veiculo | null = null; // veículo estacionado (presence)
+  private guiado: Veiculo | null = null; // veículo que ele dirige agora
+  private guiadoKey = '';
+  private seat = new THREE.Vector3();
   x = 0;
   y = 0;
   z = 0;
@@ -67,6 +72,18 @@ export class RemotePlayer {
     this.anim = new Animador(this.p);
     this.p.raiz.visible = false; // só aparece depois do 1º movimento
     scene.add(this.p.raiz);
+    this.setParado(info.veh);
+  }
+
+  /** Veículo estacionado que veio pela presence (atualiza ao vivo, sem recriar o jogador). */
+  setParado(v: PresencaJogador['veh']): void {
+    this.info.veh = v;
+    this.parado?.dispose();
+    this.parado = null;
+    if (!v) return;
+    this.parado = new Veiculo(MODELOS[v.m], v.c);
+    this.parado.posicionar(v.x, v.z, v.h);
+    this.scene.add(this.parado.grupo);
   }
 
   receber(m: Mover): void {
@@ -94,16 +111,41 @@ export class RemotePlayer {
 
     const raiz = this.p.raiz;
     raiz.visible = true;
-    raiz.position.set(this.x, this.y + (this.morto ? 0.12 : 0), this.z);
+    // dirigindo: mostra o veículo dele e o corpo sentado; senão o estacionado
+    const dirigindo = s.ve > 0 && !!MODELOS[s.ve - 1];
+    const chave = `${s.ve}:${s.vc}`;
+    if (dirigindo && this.guiadoKey !== chave) {
+      this.guiado?.dispose();
+      this.guiado = new Veiculo(MODELOS[s.ve - 1], s.vc);
+      this.scene.add(this.guiado.grupo);
+      this.guiadoKey = chave;
+    } else if (!dirigindo && this.guiado) {
+      this.guiado.dispose();
+      this.guiado = null;
+      this.guiadoKey = '';
+    }
+    if (this.parado) this.parado.grupo.visible = !dirigindo;
+    if (dirigindo && this.guiado) {
+      const g = this.guiado;
+      const antes = g.v;
+      const dist = Math.hypot(this.x - g.x, this.z - g.z);
+      g.posicionar(this.x, this.z, a.vh + (b.vh - a.vh) * k);
+      g.v = dt > 0 ? (dist / dt) * Math.sign(antes || 1) : 0; // só para girar as rodas
+      void antes;
+      const seat = g.assento(this.seat);
+      this.giro = g.h;
+      raiz.position.set(seat.x, seat.y, seat.z);
+    } else raiz.position.set(this.x, this.y + (this.morto ? 0.12 : 0), this.z);
     raiz.rotation.y = this.giro;
     raiz.rotation.x = this.morto ? -Math.PI / 2 : 0;
     this.etiqueta.visible = !this.morto;
 
     if (s.a !== this.armaCod) this.trocarArma(s.a);
-    this.anim.armado = !!this.naMao && s.l && !this.morto;
+    this.anim.armado = !!this.naMao && s.l && !this.morto && !dirigindo;
+    if (this.naMao) this.naMao.grupo.visible = !dirigindo;
     this.anim.mira = s.p;
     this.anim.tocar(this.morto ? 'idle' : s.c); // o remoto repete o clipe pelo nome
-    this.anim.atualizar(dt, 0, this.y <= 0 && !this.morto);
+    this.anim.atualizar(dt, 0, (this.y <= 0 || dirigindo) && !this.morto);
   }
 
   private trocarArma(cod: number): void {
@@ -123,6 +165,8 @@ export class RemotePlayer {
   }
 
   dispose(): void {
+    this.parado?.dispose();
+    this.guiado?.dispose();
     this.naMao?.grupo.removeFromParent();
     this.scene.remove(this.p.raiz);
     // libera texturas e geometrias do jogador (a sombra é compartilhada)
@@ -151,6 +195,7 @@ export class Remotos {
     const ids = new Set(lista.map((p) => p.id));
     for (const p of lista) {
       const atual = this.mapa.get(p.id);
+      if (atual && JSON.stringify(atual.info.veh) !== JSON.stringify(p.veh)) atual.setParado(p.veh);
       if (atual && (atual.info.pers !== p.pers || atual.info.eq.c1 !== p.eq.c1 || atual.info.eq.c2 !== p.eq.c2 || atual.info.nome !== p.nome)) {
         atual.dispose(); // personagem/equipe mudou: recria (atualiza ao vivo)
         this.mapa.delete(p.id);

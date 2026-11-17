@@ -275,6 +275,17 @@ export class Pedestres implements Alvos {
     }
   }
 
+  /** Veículo atropela pedestres vivos num raio (dano 20 + v × 5). Devolve quantos morreram. */
+  atropelar(x: number, z: number, raio: number, vel: number, dirX: number, dirZ: number): number {
+    let mortos = 0;
+    for (const n of this.lista) {
+      if (!n.vivo() || Math.hypot(n.x - x, n.z - z) > raio) continue;
+      // o "golpe" vem de trás do veículo: o pedestre cai para a frente
+      if (this.dano(n, 20 + vel * 5, n.x - dirX * 2, n.z - dirZ * 2)) mortos++;
+    }
+    return mortos;
+  }
+
   /** Resumo para inspeção no dev. */
   resumo() {
     return this.lista.map((n) => ({ x: +n.x.toFixed(1), z: +n.z.toFixed(1), estado: n.estado, vida: n.vida, visivel: n.p.raiz.visible }));

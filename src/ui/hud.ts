@@ -22,6 +22,8 @@ const CSS = `
 .gh-aviso{position:absolute;left:0;right:0;top:20%;text-align:center;font:700 30px system-ui}
 .gh-placar{position:absolute;left:50%;top:14%;transform:translateX(-50%);min-width:min(420px,90vw);background:#000c;border-radius:12px;padding:10px 16px}
 .gh-placar table{width:100%;border-collapse:collapse}.gh-placar td,.gh-placar th{padding:4px 8px;text-align:left}.gh-placar .eu{color:#ffd400}
+.gh-vel{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);font:700 34px system-ui}
+.gh-dica{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);background:#000a;border-radius:10px;padding:6px 14px}
 .gh-fps{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:18px;opacity:.8}
 `;
 
@@ -38,6 +40,8 @@ export class Hud {
   private fps: HTMLElement;
   private tMx = 0;
   private placarEl: HTMLElement;
+  private vel: HTMLElement;
+  private dicaEl: HTMLElement;
 
   constructor() {
     const st = document.createElement('style');
@@ -48,7 +52,7 @@ export class Hud {
       <div class="gh-mira"></div><div class="gh-mx"></div>
       <div class="gh-feed"></div>
       <div class="gh-aviso"></div>
-      <div class="gh-fps"></div><div class="gh-placar" hidden></div>
+      <div class="gh-fps"></div><div class="gh-placar" hidden></div><div class="gh-vel" hidden></div><div class="gh-dica" hidden></div>
       <div class="gh-bar"><div class="gh-nv"></div>
         <div class="gh-barra gh-v"><i></i></div><div class="gh-barra gh-c"><i></i></div></div>
       <div class="gh-arma"></div>`;
@@ -63,6 +67,8 @@ export class Hud {
     this.mx = q('.gh-mx');
     this.fps = q('.gh-fps');
     this.placarEl = q('.gh-placar');
+    this.vel = q('.gh-vel');
+    this.dicaEl = q('.gh-dica');
   }
 
   barras(vida: number, colete: number): void {
@@ -108,6 +114,17 @@ export class Hud {
     }
     this.placarEl.replaceChildren(tab);
     this.placarEl.hidden = false;
+  }
+
+  /** Velocímetro em km/h (null esconde). */
+  veiculo(kmh: number | null): void {
+    this.vel.hidden = kmh === null;
+    if (kmh !== null) this.vel.textContent = `${Math.round(kmh)} km/h`;
+  }
+
+  dica(t: string): void {
+    this.dicaEl.hidden = !t;
+    if (this.dicaEl.textContent !== t) this.dicaEl.textContent = t;
   }
 
   contadorFps(fps: number): void {

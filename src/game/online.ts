@@ -114,6 +114,12 @@ export class Online {
     this.sala.enviar('move', { i: this.eu.id, ...m });
   }
 
+  /** Atualiza o veículo estacionado que os outros veem (presence). */
+  async atualizarVeiculo(veh: PresencaJogador['veh']): Promise<void> {
+    this.eu.veh = veh;
+    await this.sala?.atualizarEu({ ...this.eu });
+  }
+
   enviarTiro(o: THREE.Vector3, e: THREE.Vector3, silenciado: boolean): void {
     this.sala?.enviar('tiro', { i: this.eu.id, o: [o.x, o.y, o.z], e: [e.x, e.y, e.z], s: silenciado });
   }

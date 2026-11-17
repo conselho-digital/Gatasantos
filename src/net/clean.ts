@@ -1,7 +1,7 @@
 /** Todo dado vindo da rede passa por aqui (tipos, limites, texto limpo). O canal Realtime é público. */
 import type { Clip } from '../game/anim';
 
-export const CLIPES: Clip[] = ['idle', 'walk', 'run', 'crouch_idle', 'crouch_walk', 'jump', 'fall', 'land'];
+export const CLIPES: Clip[] = ['idle', 'walk', 'run', 'crouch_idle', 'crouch_walk', 'jump', 'fall', 'land', 'sit_car', 'ride_bike'];
 const LIM = 400; // m: nada passa disso (mapas são menores)
 
 export const num = (v: unknown, min: number, max: number, pad = 0): number => {
@@ -26,6 +26,8 @@ export interface PresencaJogador {
   nome: string;
   pers: string;
   eq: { n: string; c1: number; c2: number };
+  /** Veículo estacionado (garagem): modelo, cor, posição e direção. */
+  veh?: { m: number; c: number; x: number; z: number; h: number };
 }
 
 export function limparPresenca(v: unknown): PresencaJogador | null {
@@ -34,11 +36,13 @@ export function limparPresenca(v: unknown): PresencaJogador | null {
   const id = limparId(o.id);
   if (!id) return null;
   const eq = (o.eq ?? {}) as Record<string, unknown>;
+  const veh = o.veh && typeof o.veh === 'object' ? (o.veh as Record<string, unknown>) : null;
   return {
     id,
     nome: limparNome(o.nome),
     pers: typeof o.pers === 'string' ? o.pers.slice(0, 24) : 'Astro',
     eq: { n: limparNome(eq.n).slice(0, 20), c1: cor(eq.c1), c2: cor(eq.c2) },
+    veh: veh ? { m: num(veh.m, 0, 5) | 0, c: num(veh.c, 0, 4) | 0, x: num(veh.x, -LIM, LIM), z: num(veh.z, -LIM, LIM), h: num(veh.h, -10, 10) } : undefined,
   };
 }
 
@@ -53,6 +57,9 @@ export interface Mover {
   l: boolean; // arma levantada
   rl: boolean; // recarregando
   pr: boolean; // protegido
+  ve: number; // veículo que estou dirigindo (0 = nenhum; 1.. = índice do modelo + 1)
+  vc: number; // cor do veículo
+  vh: number; // direção do veículo
 }
 
 export function limparMover(v: unknown): Mover | null {
@@ -66,6 +73,7 @@ export function limparMover(v: unknown): Mover | null {
     x: num(o.x, -LIM, LIM), y: num(o.y, 0, 10), z: num(o.z, -LIM, LIM),
     r: num(o.r, -10, 10), hp: num(o.hp, 0, 100), a: num(o.a, 0, 22) | 0, p: num(o.p, -2, 2),
     l: o.l === true, rl: o.rl === true, pr: o.pr === true,
+    ve: num(o.ve, 0, 6) | 0, vc: num(o.vc, 0, 4) | 0, vh: num(o.vh, -10, 10),
   };
 }
 

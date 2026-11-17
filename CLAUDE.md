@@ -157,3 +157,29 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - Pedido do dono: ao clicar em "Entrar no jogo" a tela vai para **tela cheia** e tenta **travar a paisagem** (`entrarEmTelaCheia()` em `ui/menu.ts`,
   chamada dentro do clique para o navegador aceitar). Trava de orientação só existe em celular/tablet (Android/Chrome); iPhone não
   deixa (segue sem). Testado: emulação de celular 844x390 entra com `fullscreenElement = HTML`, 0 erros.
+
+## Rodada: Etapa 8 — Veículos (carros, motos, viatura, garagem)
+- `vehicle.ts`: 6 modelos por código (Gol, Buffalo, Opala, Cruiser, Esportiva, Viatura): carroceria numa só malha (cor por vértice) +
+  rodas (`wheel_FL/FR/BL/BR`, moto `wheel_F/R`) + barra de luz da viatura. 5 cores iguais (azul escuro, vinho, branco fosco, cinza, amarelo).
+  Física: carro 120 km/h (33,3 m/s), moto 130 km/h (36,1); aceleração cai perto do topo; direção `max(0,4, 1 − v/45)`; freio de mão
+  freia e faz a traseira derrapar (`slip`); ré até 8 m/s. Colisão por 2 círculos que **não trava nem quica** (tira só a velocidade que entra
+  na parede e desliza); fica dentro dos limites do mapa. Moto: inclina nas curvas.
+- `driving.ts` (`Conducao`): entrar/sair em etapas `aproximar → entrando → dirigindo → saindo`; o corpo anda até a porta (esquerda ou direita,
+  a mais perto), `entrando` leva o corpo da porta ao banco; só sai com ≤ 3 m/s ("Pare para sair"); sai pela porta esquerda, direita ou atrás
+  (a primeira livre). Moto caída: levanta (0,8 s) antes de subir. Atropelo acima de 4,5 m/s: dano `20 + v × 5`.
+  **Moto acima de 11 m/s (40 km/h) na batida**: piloto é jogado 1,8 m à frente, deitado 1,6 s, dano `min(380, (v − 8) × 9)`; moto fica caída.
+- `ui/garage.ts` (tecla V): modelo + cor, pré-visualização do modelo real girando (renderizador próprio descartado ao fechar);
+  o veículo só aparece no botão **Chamar**, 5–12 m à frente em lugar livre (≥ 5,4 m de outros). Um por jogador (o anterior some).
+  Mouse é preso de novo ao fechar (2 tentativas, lição 22).
+- Controles: F entra/sai, W/S acelera/freia/ré, A/D esterça, Espaço freio de mão, E luzes da viatura (vermelho/azul, ciclo 0,8 s).
+  Câmera atrás do veículo quando anda (> 0,8 m/s); parado, gira livre. HUD: velocímetro (km/h) e dica "F — entrar".
+- Rede: `move` leva `ve` (modelo), `vc` (cor), `vh` (direção); o remoto mostra o veículo dele e o corpo sentado (clipes `sit_car`/`ride_bike`
+  repetidos pelo nome). Veículo estacionado vai pela **presence** (`veh {m,c,x,z,h}`, atualiza ao vivo sem recriar o jogador).
+- Clipes novos: `sit_car`, `ride_bike`. `dispose()` libera geometria/material de cada veículo.
+- Testes (navegador, relógio do jogo): carro entra e dirige; **velocidade máxima 33,3 m/s = 120 km/h**; curva em alta (heading +0,09 rad
+  em 0,8 s, direção firme); freio de mão para o carro; para na parede do mapa sem entrar em colisor; moto a 36 m/s bate: cai, vida 400 → 147
+  (dano 253); subir na moto caída funciona; carro atropela e mata NPC a 28 m/s; 2 abas: B vê o veículo estacionado de A e depois ele
+  guiado, com A sentado; 0 erros de página.
+- Limites: **sem som** (motor, buzina, sirene, batida: etapa 9) e sem faíscas; sem animação de abrir/fechar porta nem `door_L/R`;
+  veículo estacionado não é obstáculo para pessoas (sem colisão veículo×pessoa nem veículo×veículo); só o dono dirige (sem equipe/passageiro);
+  sem empinar a moto (Shift) nem buzina; sem veículos vistos de longe com corte por distância; a saída de A no remoto só foi testada em partes.

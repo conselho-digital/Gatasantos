@@ -5,7 +5,8 @@ import type { Personagem } from './character';
 export type Clip =
   | 'idle' | 'walk' | 'run'
   | 'crouch_idle' | 'crouch_walk'
-  | 'jump' | 'fall' | 'land';
+  | 'jump' | 'fall' | 'land'
+  | 'sit_car' | 'ride_bike';
 
 /** Velocidades do jogo (m/s): andar 2,1, correr 6,2, agachado 1. */
 export const VEL_JOGO: Partial<Record<Clip, number>> = { walk: 2.1, run: 6.2, crouch_walk: 1.0 };
@@ -110,6 +111,24 @@ function posar(clip: Clip, fase: number, t: number, p: Pose): void {
       def(p, 'Spine', 0.1);
       def(p, 'L_UpperArm', -1.5 + b, 0, 0.7); def(p, 'R_UpperArm', -1.5 - b, 0, -0.7);
       def(p, 'L_ForeArm', -0.4); def(p, 'R_ForeArm', -0.4);
+      break;
+    }
+    case 'sit_car': {
+      // sentado no carro: coxas para a frente, mãos no volante
+      def(p, 'L_Thigh', -1.4); def(p, 'R_Thigh', -1.4);
+      def(p, 'L_Calf', 1.45); def(p, 'R_Calf', 1.45);
+      def(p, 'Spine', -0.05); def(p, 'Head', 0.05);
+      def(p, 'L_UpperArm', -0.95, 0, 0.18); def(p, 'R_UpperArm', -0.95, 0, -0.18);
+      def(p, 'L_ForeArm', -0.55); def(p, 'R_ForeArm', -0.55);
+      break;
+    }
+    case 'ride_bike': {
+      // na moto: inclinado para o guidão
+      def(p, 'L_Thigh', -1.1, 0, 0.18); def(p, 'R_Thigh', -1.1, 0, -0.18);
+      def(p, 'L_Calf', 1.25); def(p, 'R_Calf', 1.25);
+      def(p, 'Spine', 0.35); def(p, 'Head', -0.3);
+      def(p, 'L_UpperArm', -1.15, 0, 0.3); def(p, 'R_UpperArm', -1.15, 0, -0.3);
+      def(p, 'L_ForeArm', -0.35); def(p, 'R_ForeArm', -0.35);
       break;
     }
     case 'land': {
