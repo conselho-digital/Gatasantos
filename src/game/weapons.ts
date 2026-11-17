@@ -1,5 +1,5 @@
 /** Tabela de armas (seção 6.7). Dano no corpo; cabeça × `cabeca`. */
-export type ArmaId = 'punho' | 'pistola' | 'fuzilA' | 'fuzilB' | 'fuzilC' | 'fuzilS';
+export type ArmaId = 'punho' | 'pistola' | 'fuzilA' | 'fuzilB' | 'fuzilC' | 'fuzilS' | 'spray';
 
 export interface Arma {
   id: ArmaId;
@@ -31,6 +31,8 @@ export const ARMAS: Arma[] = [
   { id: 'fuzilB', nome: 'Fuzil B', dano: 18, cabeca: 2, gap: 0.09, pente: 30, reserva: 120, alcance: 140, automatica: true, silenciada: false, corpoACorpo: false, duasMaos: true, cor: 0x4a3b2a, comprimento: 0.58 },
   { id: 'fuzilC', nome: 'Fuzil C', dano: 22, cabeca: 2, gap: 0.12, pente: 30, reserva: 120, alcance: 150, automatica: true, silenciada: false, corpoACorpo: false, duasMaos: true, cor: 0x2f3a4a, comprimento: 0.64 },
   { id: 'fuzilS', nome: 'Fuzil silenciado', dano: 16, cabeca: 2, gap: 0.10, pente: 30, reserva: 120, alcance: 120, automatica: true, silenciada: true, corpoACorpo: false, duasMaos: true, cor: 0x1c1c1c, comprimento: 0.72 },
+  // Lata de spray: sem dano, pinta o desenho da equipe em parede lisa (tratada como ferramenta de mão)
+  { id: 'spray', nome: 'Lata de spray', dano: 0, cabeca: 1, gap: 0.9, pente: 0, reserva: 0, alcance: 3, automatica: false, silenciada: true, corpoACorpo: true, duasMaos: false, cor: 0x2b6cb0, comprimento: 0.16 },
 ];
 
 export const armaPorId = (id: ArmaId): Arma => ARMAS.find((a) => a.id === id)!;

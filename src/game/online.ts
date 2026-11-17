@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { Remotos } from './remote';
 import { Sala, MAX_SESSAO } from '../net/sala';
 import { temSupabase } from '../net/supabase';
-import { limparBuzina, limparDano, limparKill, limparMover, limparTiro, type Mover, type PresencaJogador } from '../net/clean';
+import { limparBuzina, limparSpray, limparDano, limparKill, limparMover, limparTiro, type Mover, type PresencaJogador } from '../net/clean';
 import type { Som, Controle } from './audio';
 import type { MensagemRtc } from '../net/voz';
+import type { Spray } from '../net/clean';
 import { plausible } from '../net/plausible';
 import { ARMAS } from './weapons';
 import type { Alvo, Alvos, ContextoTiro } from './combat';
@@ -25,6 +26,8 @@ interface Ganchos {
   som: Som | null;
   /** Sinalização de voz que chegou para mim. */
   rtc?(m: MensagemRtc): void;
+  /** Pintura de outro jogador (validada). */
+  spray?(s: Spray): void;
 }
 
 /** Liga o jogo ao Supabase Realtime: presença, movimento, tiros, danos e abates. */
@@ -88,6 +91,15 @@ export class Online {
         const quem = this.remotos.mapa.get(d.de)?.info.nome ?? 'alguém';
         this.g.feed(`${quem} derrubou você`);
       }
+    } else if (nome === 'spray') {
+      const sp = limparSpray(payload);
+      if (!sp || sp.i === this.eu.id) return;
+      const r = this.remotos.mapa.get(sp.i);
+      const agora = performance.now();
+      if (!r || agora - r.ultimoSpray < 900) return; // só jogador conhecido, 1 pintura a cada 0,9 s
+      if (Math.hypot(sp.x - r.x, sp.z - r.z) > 6) return; // tem que estar perto da parede que pintou
+      r.ultimoSpray = agora;
+      this.g.spray?.(sp);
     } else if (nome === 'rtc') {
       const o = payload as Record<string, unknown> | null;
       if (o && typeof o.i === 'string' && typeof o.p === 'string' && (o.t === 'o' || o.t === 'a' || o.t === 'c') && o.p === this.eu.id) {
@@ -134,6 +146,10 @@ export class Online {
     if (this.tMove < (parado ? 0.25 : 1 / 12)) return;
     this.tMove = 0;
     this.sala.enviar('move', { i: this.eu.id, ...m });
+  }
+
+  enviarSpray(s: Omit<Spray, 'i'>): void {
+    this.sala?.enviar('spray', { i: this.eu.id, ...s });
   }
 
   /** Sinalização WebRTC (offer/answer/ice) para um jogador específico. */

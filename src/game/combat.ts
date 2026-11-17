@@ -52,6 +52,8 @@ export interface Ganchos {
   soco(): void;
   renascer(): void;
   recarga?(): void;
+  /** Lata de spray: tenta pintar a parede à frente. */
+  spray?(): void;
 }
 
 const _o = new THREE.Vector3();
@@ -110,6 +112,20 @@ export class Combate {
       return true;
     }
     return false;
+  }
+
+  /** Vida +`n` (máx. 400). Devolve false se já está cheia (o item não é gasto). */
+  curar(n: number): boolean {
+    if (this.vida >= VIDA_MAX || this.morto > 0) return false;
+    this.vida = Math.min(VIDA_MAX, this.vida + n);
+    return true;
+  }
+
+  /** Colete +`n` (máx. 100). Devolve false se já está cheio. */
+  darColete(n: number): boolean {
+    if (this.colete >= COLETE_MAX || this.morto > 0) return false;
+    this.colete = Math.min(COLETE_MAX, this.colete + n);
+    return true;
   }
 
   trocar(id: ArmaId): void {
@@ -178,6 +194,11 @@ export class Combate {
     if (this.recarga > 0) return;
     let n = 0;
     while (this.cd <= 1e-12 && n < MAX_TIROS_POR_QUADRO) {
+      if (this.arma.id === 'spray') {
+        this.g.spray?.();
+        this.cd += this.arma.gap;
+        break;
+      }
       if (this.arma.corpoACorpo) {
         this.golpe = GOLPE_ATRASO;
         this.golpeYaw = e.yaw;

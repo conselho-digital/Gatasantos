@@ -10,6 +10,21 @@ const mat = (cor: number) => new THREE.MeshBasicMaterial({ color: cor });
 
 /** Arma simples por código (caixas e cilindros). Frente = +Z do grupo. */
 export function criarModeloArma(a: Arma): ArmaNaMao | null {
+  if (a.id === 'spray') {
+    // lata de spray: cilindro azul com bico, presa na mão (o bico é a "ponta")
+    const g = new THREE.Group();
+    const lata = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.16, 10), mat(a.cor));
+    lata.rotation.x = Math.PI / 2;
+    const tampa = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 8), mat(0xdddddd));
+    tampa.rotation.x = Math.PI / 2;
+    tampa.position.z = 0.1;
+    g.add(lata, tampa);
+    const bico = new THREE.Object3D();
+    bico.position.z = 0.13;
+    g.add(bico);
+    g.rotation.x = Math.PI / 2;
+    return { grupo: g, cano: bico };
+  }
   if (a.corpoACorpo) return null;
   const g = new THREE.Group();
   g.name = `arma-${a.id}`;

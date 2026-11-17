@@ -162,6 +162,7 @@ export class Animador {
   mira = 0;
   private armaW = 0;
   private socoT = 0;
+  private sprayT = 0;
 
   constructor(private p: Personagem) {
     this.ossos = OSSOS.map((n) => p.osso[n]);
@@ -178,6 +179,11 @@ export class Animador {
     this.fade = instante ? 1 : 0;
     this.fadeDur = clip === 'jump' || clip === 'land' ? 0.08 : 0.15;
     if (!continua && LOCOMOCAO.has(clip)) this.fase = 0;
+  }
+
+  /** Estica o braço com a lata de spray por `seg` segundos. */
+  pulverizar(seg = 1.4): void {
+    this.sprayT = seg;
   }
 
   /** Dispara o golpe de braço (soco) de ~0,3 s. */
@@ -226,6 +232,12 @@ export class Animador {
       set('L_UpperArm', -1.3 + p, -0.55, 0.25, w);
       set('L_ForeArm', -0.5, 0, 0, w);
       set('Spine', 0.05, A[IDX.Spine * 3 + 1] * 0.3, 0, w);
+    }
+    if (this.sprayT > 0) {
+      this.sprayT = Math.max(0, this.sprayT - dt);
+      const k = Math.min(1, this.sprayT * 6, (1.4 - this.sprayT) * 6 + 0.2);
+      set('R_UpperArm', -1.45 + this.mira * 0.5, 0, -0.1, k);
+      set('R_ForeArm', -0.15, 0, 0, k);
     }
     if (this.socoT > 0) {
       this.socoT = Math.max(0, this.socoT - dt);

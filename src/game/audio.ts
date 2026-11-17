@@ -237,6 +237,23 @@ export class Som {
     o.frequency.exponentialRampToValueAtTime(50, t + 0.12);
   }
 
+  /** Spray: chiado de ruído agudo por ~1,2 s. */
+  spray(x: number, z: number): void {
+    const e = this.espacial(x, z, ALCANCE.golpe);
+    if (e.g <= 0.001) return;
+    const t = this.ctx.currentTime;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 3800;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.4, t + 0.05);
+    g.gain.setValueAtTime(0.4, t + 1.05);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.25);
+    hp.connect(g).connect(this.saida('sfx', 0.6 * e.g, e.pan));
+    this.ruidoFonte(hp, t, t + 1.3);
+  }
+
   /** Pegar item (vida/colete): dois tons subindo. */
   pegar(): void {
     const t = this.ctx.currentTime;

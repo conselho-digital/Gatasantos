@@ -287,3 +287,16 @@ para fora do carro, mira em "segurar" e câmera com o arrasto vertical ao contr�
   (parte móvel `pivo` separada do `grupo`); direção fica mais dura (× 0,72) enquanto empina; solta sozinha ao largar o botão ou abaixo de 3 m/s; o piloto empina junto.
   Testado a 27,8 m/s: 0,6 rad segurando, 0 ao soltar.
 - Layout: teste dos 6 tamanhos (a pé, perto do carro, dirigindo viatura, dirigindo moto, pausa, garagem): tudo dentro da tela, sem sobreposição, menor botão 44–56 px.
+
+## Rodada: Etapa 12 (parcial) — Itens de vida/colete e pichação
+- **Itens** (`pickups.ts`): 30 de **vida (+25% = +100)** e 30 de **colete (+50)**, em posições fixas por mapa (sorteio com semente do nome do mapa), em chão livre e a ≥ 14 m
+  uma da outra (medido: mín. 14,2 m, 0 dentro de parede). Pega a 1,3 m **só se ajudar** (vida < 400 / colete < 100); volta após 90 s (estado local). Giram e flutuam;
+  **3 chamadas de desenho** (InstancedMesh: caixas de vida, de colete e brilho no chão) — medido 145 com itens × 142 sem. Mensagem "Vida +25%" / "Colete +50" e som de pegar.
+  Testes: vida cheia em cima do item não gasta; vida 250 → 350; colete 0 → 50; volta após 90 s (89 s ainda inativo, 91 s ativo); mesmas posições ao recarregar.
+- **Lata de spray** (arma 7, tecla 7/ARMA): sem dano e sem munição; tocar em atirar com **parede lisa à frente** (`acharParede`: raios horizontais a 0,5/1,1/1,7/2,3 m até 3 m,
+  3 de 4 na mesma distância ±0,3 m, quase de frente, parede reta) estica o braço 1,4 s, chia, solta **névoa na cor da equipe** e cola o **desenho da equipe** na parede
+  (faixas nas duas cores + nome; é o desenho de reserva, a imagem do admin precisa de login). Parede baixa gera pintura menor (mín. 0,7 m). Sem parede: "Sem parede lisa à frente".
+  **Máx. 40 decalques** (o mais velho some); **não é salvo**. Rede: evento `spray` validado (normal unitária, campos limitados, jogador conhecido, **1 a cada 0,9 s**,
+  a ≤ 6 m da parede). Testes: 1 decalque de frente para a parede; o outro jogador vê; sem parede não pinta; 45 pinturas → 40 mantidas; 0 erros.
+- **Fora desta rodada** (precisam de login/admin ou de muito trabalho): outdoor com vídeo do YouTube, cartazes pagos, lojas nos prédios (a Paulista já traz lojas e cartazes nas texturas),
+  2º mapa (esplanada), relevo e água. Ficam como pendência da etapa 12.

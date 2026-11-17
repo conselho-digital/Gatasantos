@@ -59,6 +59,7 @@ export class RemotePlayer {
   z = 0;
   giro = 0;
   hp = 100;
+  ultimoSpray = 0; // limite de 1 pintura a cada 0,9 s (ms)
   ultimoTiro = 0; // para validar cadência (ms)
   credito = 2; // tiros permitidos acumulados (balde de cadência)
   morto = false;

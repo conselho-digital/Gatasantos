@@ -146,3 +146,22 @@ export function limparBuzina(v: unknown): Buzina | null {
   const i = limparId(o.i);
   return i ? { i, k: num(o.k, 0, 6) | 0, x: num(o.x, -LIM, LIM), z: num(o.z, -LIM, LIM) } : null;
 }
+
+export interface Spray {
+  i: string;
+  x: number; y: number; z: number; // centro da pintura na parede
+  nx: number; nz: number; // normal da parede
+  w: number; // largura
+  c1: number; c2: number; // cores da equipe
+  n: string; // nome da equipe
+}
+
+export function limparSpray(v: unknown): Spray | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  const i = limparId(o.i);
+  if (!i) return null;
+  const nx = num(o.nx, -1, 1), nz = num(o.nz, -1, 1);
+  if (Math.abs(Math.hypot(nx, nz) - 1) > 0.05) return null; // normal precisa ser unitária
+  return { i, x: num(o.x, -LIM, LIM), y: num(o.y, 0, 10), z: num(o.z, -LIM, LIM), nx, nz, w: num(o.w, 0.5, 2.2, 1), c1: cor(o.c1), c2: cor(o.c2), n: limparNome(o.n).slice(0, 20) };
+}

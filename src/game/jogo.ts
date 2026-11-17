@@ -21,6 +21,8 @@ import { abrirPausa } from '../ui/pausa';
 import { gravarConfig, lerConfig } from './settings';
 import { definirJoystick } from './input';
 import { Conducao } from './driving';
+import { Pickups } from './pickups';
+import { Grafite, acharParede } from './graffiti';
 import { Som, type Controle, type Motor, type TipoTiro } from './audio';
 import { Voz } from '../net/voz';
 import { criarControlesToque } from '../ui/touch';
@@ -44,7 +46,7 @@ const RAD_POR_PX = 0.004;
 const RAIO = 0.4;
 const GRAVIDADE = 16;
 const PULO = 5.5;
-const TECLAS_ARMA: Record<string, ArmaId> = { Digit1: 'punho', Digit2: 'pistola', Digit3: 'fuzilA', Digit4: 'fuzilB', Digit5: 'fuzilC', Digit6: 'fuzilS' };
+const TECLAS_ARMA: Record<string, ArmaId> = { Digit1: 'punho', Digit2: 'pistola', Digit3: 'fuzilA', Digit4: 'fuzilB', Digit5: 'fuzilC', Digit6: 'fuzilS', Digit7: 'spray' };
 
 /** Monta o mapa e inicia o laço. Só roda depois do "Entrar" (nada é montado antes). */
 export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Promise<void> {
@@ -92,6 +94,9 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
   const grosso = matchMedia('(pointer: coarse)').matches;
   const npcs = new Pedestres(scene, grosso ? 18 : 26, pos.x, pos.z);
   ouvirRuido((x, z, raio) => npcs.assustar(x, z, raio));
+  // Itens de vida/colete (posições fixas por mapa, semente do nome do mapa) e pichação
+  const pickups = new Pickups(scene, [...cfg.mapa].reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
+  const grafite = new Grafite(scene);
 
   // HUD
   const usaToque = grosso || params.get('touch') === '1';
@@ -145,6 +150,7 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       meuEstado: () => ({ x: pos.x, y: altura, z: pos.z }),
       som,
       rtc: (m) => { void voz?.receber(m); },
+      spray: (sp) => { grafite.pintar({ x: sp.x, y: sp.y, z: sp.z, nx: sp.nx, nz: sp.nz, largura: sp.w }, sp.c1, sp.c2, sp.n); som?.spray(sp.x, sp.z); },
     },
   );
 
@@ -177,6 +183,14 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
     marcador: (cab, morreu) => hud.marcador(cab, morreu),
     soco: () => { anim.soco(); som?.golpe(pos.x, pos.z); },
     recarga: () => som?.recarga(pos.x, pos.z),
+    spray() {
+      const p = acharParede(pos.x, pos.z, giro);
+      if (!p) { hud.feed('Sem parede lisa à frente'); return; }
+      anim.pulverizar(1.4);
+      som?.spray(pos.x, pos.z);
+      grafite.pintar(p, equipe.c1, equipe.c2, equipe.nome);
+      online.enviarSpray({ x: p.x, y: p.y, z: p.z, nx: p.nx, nz: p.nz, w: p.largura, c1: equipe.c1, c2: equipe.c2, n: equipe.nome });
+    },
     renascer() {
       const p = pontoLivre(spawn.x - 8, spawn.x + 8, spawn.z - 8, spawn.z + 8, RAIO + 0.3);
       if (p) { pos.x = p.x; pos.z = p.z; }
@@ -537,6 +551,15 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
 
     // Pedestres, traçadores, HUD
     npcs.atualizar(dt, pos.x, pos.z);
+    grafite.atualizar(dt);
+    // itens: só pega se ajudar (vida < 400 / colete < 100); aparece "Vida +25%"/"Colete +50"
+    if (!morto && !emVeic) {
+      pickups.atualizar(dt, pos.x, pos.z, (tipo) => {
+        const ok = tipo === 'vida' ? combate.curar(100) : combate.darColete(50);
+        if (ok) { som?.pegar(); hud.feed(tipo === 'vida' ? 'Vida +25%' : 'Colete +50'); }
+        return ok;
+      });
+    } else pickups.atualizar(dt, 1e6, 1e6, () => false);
     for (const t of tracers) {
       if (!t.linha.visible) continue;
       t.t -= dt;
@@ -607,7 +630,10 @@ export async function iniciarJogo(cfg: ConfigJogo, params: URLSearchParams): Pro
       remotes: () => [...online.remotos.mapa.values()].map((r) => ({ id: r.info.id, nome: r.info.nome, x: +r.x.toFixed(2), z: +r.z.toFixed(2), hp: r.hp, visivel: r.p.raiz.visible })),
       online,
       eu: online.eu,
-      pickups: () => [],
+      pickups: () => pickups.resumo(),
+      pickupsObj: pickups,
+      grafite,
+      acharParede,
       tabelaTTK: (colete = 0) => tabelaTempoParaMatar([60, VIDA_MAX], colete),
       cadencia: (id: ArmaId, fps: number, s = 10) => ({ tiros: simularCadencia(armaPorId(id).gap, fps, s), esperado: s / armaPorId(id).gap }),
       coleteMax: COLETE_MAX,
