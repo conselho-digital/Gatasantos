@@ -3,6 +3,8 @@
 Especificação completa: `docs/ESPECIFICACAO.md` (leia inteira antes de cada etapa).
 
 ## Regras de trabalho (seção 2 e 0)
+- **Git: sempre `git push origin main` direto. Nunca criar outras branches nem PRs** (ordem do dono).
+- **Sem domínio real por enquanto** (o dono compra depois); o site usa o endereço `.vercel.app`.
 - TypeScript estrito; código e comentários em português; respostas curtas ao dono.
 - Dependências permitidas: `three`, `@supabase/supabase-js`; dev: vite, typescript, eslint
   (+ `typescript-eslint`, `@eslint/js`, `globals` só para o lint de TS). Outras: perguntar.
@@ -22,5 +24,5 @@ mapas não lidos em tempo de importação; todo oscilador precisa de parada; `?v
 - `THREE.Timer`, `dt` ≤ 50 ms, pixel ratio ≤ 2 (≤ 1,5 em toque), sem antialias em toque.
 - `npm run check` verde: lint, typecheck, build, tamanho (0,5 MB), segredos, audit.
 - Medido (swiftshader): 3 chamadas, 26 triângulos, 0 erros de página.
-- Limites: `vercel.json` usa domínio provisório `gatasantos.com.br`; deploy na Vercel ainda não feito.
+- Deploy na Vercel funcionando (`gatasantos.vercel.app`). Sem domínio real ainda; redirecionamento www removido do `vercel.json`.
 - Skills (`.claude/skills`) ainda não instaladas: origem é um repositório fora do escopo.
